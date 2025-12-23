@@ -106,7 +106,7 @@ export function ForexPrices() {
       <div className="glassmorphic rounded-xl p-6">
         <div className="text-center py-8">
           <p className="text-gray-400 mb-4">
-            No forex prices available. Prices will update automatically every 5 minutes.
+            No forex prices available. Prices will update automatically every 15 minutes.
           </p>
           <button
             onClick={fetchPrices}
@@ -188,7 +188,7 @@ export function ForexPrices() {
       {/* Info */}
       <div className="mt-6 pt-4 border-t border-fizmo-dark-700 text-sm text-gray-400">
         <p>
-          Prices update automatically every 5 minutes • Data provided by Alpha Vantage
+          Prices update automatically every 15 minutes • Data provided by Alpha Vantage
         </p>
       </div>
     </div>
