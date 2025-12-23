@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { KYCUpload } from "@/components/dashboard/KYCUpload";
 
 export default function ProfilePage() {
   const [selectedTab, setSelectedTab] = useState("personal");
@@ -317,76 +318,7 @@ export default function ProfilePage() {
       )}
 
       {/* Verification Tab */}
-      {selectedTab === "verification" && (
-        <div className="space-y-6">
-          <div className="glassmorphic rounded-xl p-6">
-            <h3 className="text-xl font-bold text-white mb-4">KYC Verification Status</h3>
-            <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-lg mb-4">
-              <div className="flex items-center space-x-3">
-                <span className="text-green-500 text-2xl">✓</span>
-                <div>
-                  <p className="text-green-500 font-semibold">Fully Verified</p>
-                  <p className="text-gray-400 text-sm">Your account has been verified and approved</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <div className="p-4 bg-fizmo-dark-800 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-white font-medium">Government ID</p>
-                    <p className="text-gray-400 text-sm">Verified on 2024-01-15</p>
-                  </div>
-                  <span className="px-3 py-1 bg-green-500/20 text-green-500 rounded text-sm">
-                    Approved
-                  </span>
-                </div>
-              </div>
-              <div className="p-4 bg-fizmo-dark-800 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-white font-medium">Proof of Address</p>
-                    <p className="text-gray-400 text-sm">Verified on 2024-01-15</p>
-                  </div>
-                  <span className="px-3 py-1 bg-green-500/20 text-green-500 rounded text-sm">
-                    Approved
-                  </span>
-                </div>
-              </div>
-              <div className="p-4 bg-fizmo-dark-800 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-white font-medium">Selfie Verification</p>
-                    <p className="text-gray-400 text-sm">Verified on 2024-01-15</p>
-                  </div>
-                  <span className="px-3 py-1 bg-green-500/20 text-green-500 rounded text-sm">
-                    Approved
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="glassmorphic rounded-xl p-6">
-            <h3 className="text-xl font-bold text-white mb-4">Account Limits</h3>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center p-4 bg-fizmo-dark-800 rounded-lg">
-                <span className="text-gray-400">Daily Deposit Limit</span>
-                <span className="text-white font-bold">$100,000</span>
-              </div>
-              <div className="flex justify-between items-center p-4 bg-fizmo-dark-800 rounded-lg">
-                <span className="text-gray-400">Daily Withdrawal Limit</span>
-                <span className="text-white font-bold">$10,000</span>
-              </div>
-              <div className="flex justify-between items-center p-4 bg-fizmo-dark-800 rounded-lg">
-                <span className="text-gray-400">Maximum Position Size</span>
-                <span className="text-white font-bold">100 Lots</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {selectedTab === "verification" && <KYCUpload />}
     </div>
   );
 }

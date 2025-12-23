@@ -51,6 +51,7 @@ model Client {
   accounts    Account[]
   deposits    Deposit[]
   withdrawals Withdrawal[]
+  kycDocuments KYCDocument[]
 
   @@map("clients")
 }
@@ -204,6 +205,28 @@ model Session {
   @@map("sessions")
 }
 
+// KYCDocument model - KYC document uploads
+model KYCDocument {
+  id              String          @id @default(cuid())
+  clientId        String          @map("client_id")
+  documentType    DocumentType    @map("document_type")
+  fileUrl         String          @map("file_url")
+  fileName        String          @map("file_name")
+  fileSize        Int             @map("file_size")
+  mimeType        String          @map("mime_type")
+  status          KYCDocumentStatus @default(PENDING)
+  rejectionReason String?         @map("rejection_reason")
+  reviewedBy      String?         @map("reviewed_by")
+  reviewedAt      DateTime?       @map("reviewed_at")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  client          Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+  @@map("kyc_documents")
+}
+
 // Enums
 enum UserRole {
   CLIENT
@@ -261,4 +284,23 @@ enum CommissionStatus {
   PENDING
   PAID
   CANCELLED
+}
+
+enum DocumentType {
+  ID_FRONT
+  ID_BACK
+  PASSPORT
+  DRIVERS_LICENSE
+  PROOF_OF_ADDRESS
+  SELFIE
+  BANK_STATEMENT
+  UTILITY_BILL
+  OTHER
+}
+
+enum KYCDocumentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  UNDER_REVIEW
 }
