@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth";
+import { sendDepositConfirmation, sendAdminDepositAlert } from "@/lib/email";
 
 // GET - Fetch all deposits for the logged-in user
 export async function GET(request: NextRequest) {
@@ -123,6 +124,29 @@ export async function POST(request: NextRequest) {
           equity: { increment: amountNum },
         },
       });
+
+      // Send confirmation email for completed deposit
+      await sendDepositConfirmation(
+        user.email,
+        amountNum,
+        account.accountNumber,
+        client.firstName || undefined
+      );
+    }
+
+    // Send admin alert for all deposits
+    const adminUsers = await prisma.user.findMany({
+      where: { role: "ADMIN" },
+      select: { email: true },
+    });
+
+    if (adminUsers.length > 0) {
+      await sendAdminDepositAlert(
+        adminUsers[0].email,
+        user.email,
+        amountNum,
+        account.accountNumber
+      );
     }
 
     return NextResponse.json({ deposit }, { status: 201 });

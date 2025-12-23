@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { verifyToken } from "@/lib/auth";
+import { sendSupportTicketEmail } from "@/lib/email";
 
 // NOTE: This requires a Ticket model in Prisma schema
 // For now, returning structured mock data that matches frontend expectations
@@ -135,6 +136,20 @@ export async function POST(request: NextRequest) {
     };
 
     console.log(`Ticket created: ${ticketId} by ${user.email}`);
+
+    // Get user's name from client profile
+    const client = await prisma.client.findUnique({
+      where: { userId: user.id },
+    });
+
+    // Send support ticket confirmation email
+    await sendSupportTicketEmail(
+      user.email,
+      ticketId,
+      subject,
+      message,
+      client?.firstName || undefined
+    );
 
     return NextResponse.json({
       message: "Ticket created successfully",

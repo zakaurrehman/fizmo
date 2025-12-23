@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { sendPasswordResetEmail } from "@/lib/email";
 import crypto from "crypto";
 
 export async function POST(request: NextRequest) {
@@ -35,16 +36,19 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      // TODO: Send email with reset link
-      // const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL}/reset-password?token=${resetToken}`;
-      // await sendEmail({
-      //   to: user.email,
-      //   subject: "Password Reset Request",
-      //   html: `Click here to reset your password: ${resetUrl}`,
-      // });
+      // Get user's name from client profile
+      const client = await prisma.client.findUnique({
+        where: { userId: user.id },
+      });
 
-      console.log(`Password reset requested for: ${user.email}`);
-      console.log(`Reset token: ${resetToken}`);
+      // Send password reset email
+      await sendPasswordResetEmail(
+        user.email,
+        resetToken,
+        client?.firstName || undefined
+      );
+
+      console.log(`Password reset email sent to: ${user.email}`);
     }
 
     return NextResponse.json(

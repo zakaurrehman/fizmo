@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { hashPassword, validatePassword } from "@/lib/auth/password";
 import { createSession } from "@/lib/auth/session";
+import { sendVerificationEmail } from "@/lib/email";
 import type { RegisterRequest, ApiResponse, AuthResponse } from "@/types/api";
 import crypto from "crypto";
 
@@ -90,16 +91,11 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // TODO: Send verification email
-    // const verifyUrl = `${process.env.NEXT_PUBLIC_APP_URL}/verify?token=${verificationToken}`;
-    // await sendEmail({
-    //   to: user.email,
-    //   subject: "Verify Your Email Address",
-    //   html: `Welcome to Fizmo! Click here to verify your email: ${verifyUrl}`,
-    // });
+    // Send verification email
+    await sendVerificationEmail(user.email, verificationToken, firstName);
 
     console.log(`User registered: ${user.email}`);
-    console.log(`Verification token: ${verificationToken}`);
+    console.log(`Verification email sent to: ${user.email}`);
 
     // Create session
     const token = await createSession(user.id, user.email, user.role);

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth";
+import { sendWithdrawalConfirmation, sendAdminWithdrawalAlert } from "@/lib/email";
 
 // GET - Fetch all withdrawals for the logged-in user
 export async function GET(request: NextRequest) {
@@ -125,6 +126,30 @@ export async function POST(request: NextRequest) {
         equity: { decrement: amountNum },
       },
     });
+
+    // Send withdrawal confirmation email to user
+    await sendWithdrawalConfirmation(
+      user.email,
+      amountNum,
+      account.accountNumber,
+      "PENDING",
+      client.firstName || undefined
+    );
+
+    // Send admin alert for withdrawal request
+    const adminUsers = await prisma.user.findMany({
+      where: { role: "ADMIN" },
+      select: { email: true },
+    });
+
+    if (adminUsers.length > 0) {
+      await sendAdminWithdrawalAlert(
+        adminUsers[0].email,
+        user.email,
+        amountNum,
+        account.accountNumber
+      );
+    }
 
     return NextResponse.json({ withdrawal }, { status: 201 });
   } catch (error: any) {
