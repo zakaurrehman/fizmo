@@ -1,0 +1,111 @@
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { verifyAuth } from "@/lib/auth";
+
+// GET - Fetch all deposits (Admin only)
+export async function GET(request: NextRequest) {
+  try {
+    const user = await verifyAuth(request);
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Get all deposits with account and client info
+    const deposits = await prisma.deposit.findMany({
+      include: {
+        account: {
+          include: {
+            client: {
+              select: {
+                firstName: true,
+                lastName: true,
+                user: {
+                  select: {
+                    email: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    return NextResponse.json({ deposits });
+  } catch (error: any) {
+    console.error("Admin deposits fetch error:", error);
+    return NextResponse.json(
+      { error: "Internal server error", details: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+// PATCH - Approve/Reject deposit
+export async function PATCH(request: NextRequest) {
+  try {
+    const user = await verifyAuth(request);
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const { depositId, status } = body;
+
+    if (!depositId || !status) {
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
+      );
+    }
+
+    if (!["COMPLETED", "REJECTED"].includes(status)) {
+      return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+    }
+
+    // Get the deposit with account info
+    const deposit = await prisma.deposit.findUnique({
+      where: { id: depositId },
+      include: { account: true },
+    });
+
+    if (!deposit) {
+      return NextResponse.json({ error: "Deposit not found" }, { status: 404 });
+    }
+
+    if (deposit.status !== "PENDING") {
+      return NextResponse.json(
+        { error: "Deposit already processed" },
+        { status: 400 }
+      );
+    }
+
+    // Update deposit status
+    const updatedDeposit = await prisma.deposit.update({
+      where: { id: depositId },
+      data: { status },
+    });
+
+    // If approved, update account balance
+    if (status === "COMPLETED") {
+      await prisma.account.update({
+        where: { id: deposit.accountId },
+        data: {
+          balance: { increment: deposit.amount },
+          equity: { increment: deposit.amount },
+        },
+      });
+    }
+
+    return NextResponse.json({ deposit: updatedDeposit });
+  } catch (error: any) {
+    console.error("Admin deposit update error:", error);
+    return NextResponse.json(
+      { error: "Internal server error", details: error.message },
+      { status: 500 }
+    );
+  }
+}

@@ -1,0 +1,264 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// User model - Authentication and roles
+model User {
+  id               String   @id @default(cuid())
+  email            String   @unique
+  passwordHash     String   @map("password_hash")
+  role             UserRole @default(CLIENT)
+  kycStatus        KycStatus @default(PENDING) @map("kyc_status")
+  status           UserStatus @default(ACTIVE)
+  emailVerified    Boolean  @default(false) @map("email_verified")
+  verificationToken String? @map("verification_token")
+  resetToken       String?  @map("reset_token")
+  resetTokenExpiry DateTime? @map("reset_token_expiry")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  client        Client?
+  sessions      Session[]
+
+  @@map("users")
+}
+
+// Client model - Extended client information
+model Client {
+  id          String   @id @default(cuid())
+  userId      String   @unique @map("user_id")
+  clientId    String   @unique @map("client_id")
+  firstName   String?  @map("first_name")
+  lastName    String?  @map("last_name")
+  phone       String?
+  country     String?
+  labels      String[] // VIP, High Risk, etc.
+  metadata    Json?    // Additional custom data
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accounts    Account[]
+  deposits    Deposit[]
+  withdrawals Withdrawal[]
+
+  @@map("clients")
+}
+
+// Account model - Trading accounts
+model Account {
+  id          String        @id @default(cuid())
+  accountId   String        @unique @map("account_id") // MT4/MT5 account ID
+  clientId    String        @map("client_id")
+  accountType AccountType   @map("account_type")
+  currency    String        @default("USD")
+  balance     Decimal       @default(0) @db.Decimal(18, 2)
+  equity      Decimal       @default(0) @db.Decimal(18, 2)
+  leverage    Int           @default(100)
+  status      AccountStatus @default(ACTIVE)
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  client       Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  ledgerEntries LedgerEntry[]
+  trades        Trade[]
+
+  @@map("accounts")
+}
+
+// LedgerEntry model - Immutable double-entry accounting
+model LedgerEntry {
+  id            String   @id @default(cuid())
+  entryId       String   @unique @map("entry_id")
+  accountId     String   @map("account_id")
+  type          LedgerType
+  amount        Decimal  @db.Decimal(18, 2)
+  currency      String
+  balanceAfter  Decimal  @map("balance_after") @db.Decimal(18, 2)
+  txRef         String?  @map("tx_ref") // Transaction reference
+  description   String?
+  metadata      Json?
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  account       Account  @relation(fields: [accountId], references: [id])
+
+  @@index([accountId, createdAt])
+  @@map("ledger_entries")
+}
+
+// Deposit model - Track incoming funds
+model Deposit {
+  id          String        @id @default(cuid())
+  clientId    String        @map("client_id")
+  amount      Decimal       @db.Decimal(18, 2)
+  currency    String        @default("USD")
+  provider    String        // Payment provider name
+  providerTx  String?       @map("provider_tx") // Provider transaction ID
+  status      PaymentStatus @default(PENDING)
+  metadata    Json?
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  client      Client        @relation(fields: [clientId], references: [id])
+
+  @@map("deposits")
+}
+
+// Withdrawal model - Track outgoing funds
+model Withdrawal {
+  id          String        @id @default(cuid())
+  clientId    String        @map("client_id")
+  amount      Decimal       @db.Decimal(18, 2)
+  currency    String        @default("USD")
+  provider    String
+  providerTx  String?       @map("provider_tx")
+  status      PaymentStatus @default(PENDING)
+  metadata    Json?
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  client      Client        @relation(fields: [clientId], references: [id])
+
+  @@map("withdrawals")
+}
+
+// Trade model - Synced from MT4/MT5
+model Trade {
+  id          String   @id @default(cuid())
+  tradeId     String   @unique @map("trade_id") // MT4/MT5 trade ID
+  accountId   String   @map("account_id")
+  symbol      String
+  volume      Decimal  @db.Decimal(18, 2)
+  openPrice   Decimal  @map("open_price") @db.Decimal(18, 5)
+  closePrice  Decimal? @map("close_price") @db.Decimal(18, 5)
+  profit      Decimal? @db.Decimal(18, 2)
+  commission  Decimal? @db.Decimal(18, 2)
+  swap        Decimal? @db.Decimal(18, 2)
+  openTime    DateTime @map("open_time")
+  closeTime   DateTime? @map("close_time")
+
+  account     Account  @relation(fields: [accountId], references: [id])
+
+  @@index([accountId, openTime])
+  @@map("trades")
+}
+
+// IbRelation model - Affiliate hierarchies
+model IbRelation {
+  id              String   @id @default(cuid())
+  ibId            String   @map("ib_id")
+  clientId        String   @map("client_id")
+  commissionRules Json     @map("commission_rules")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@map("ib_relations")
+}
+
+// Commission model - Track and settle IB payouts
+model Commission {
+  id          String          @id @default(cuid())
+  ibId        String          @map("ib_id")
+  source      String          // Trade ID or reference
+  amount      Decimal         @db.Decimal(18, 2)
+  currency    String          @default("USD")
+  paidStatus  CommissionStatus @map("paid_status") @default(PENDING)
+  paidAt      DateTime?       @map("paid_at")
+  createdAt   DateTime        @default(now()) @map("created_at")
+
+  @@map("commissions")
+}
+
+// Audit model - Log all admin changes
+model Audit {
+  id        String   @id @default(cuid())
+  actor     String   // User ID who performed the action
+  action    String   // Action type
+  target    String   // What was changed
+  payload   Json?    // Details of the change
+  timestamp DateTime @default(now())
+
+  @@index([actor, timestamp])
+  @@map("audits")
+}
+
+// Session model - User sessions
+model Session {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+// Enums
+enum UserRole {
+  CLIENT
+  ADMIN
+  IB
+  SUPER_ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  BANNED
+}
+
+enum KycStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  UNDER_REVIEW
+}
+
+enum AccountType {
+  DEMO
+  LIVE
+}
+
+enum AccountStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  CLOSED
+}
+
+enum LedgerType {
+  DEPOSIT
+  WITHDRAWAL
+  TRADE_PROFIT
+  TRADE_LOSS
+  COMMISSION
+  ADJUSTMENT
+  TRANSFER_IN
+  TRANSFER_OUT
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum CommissionStatus {
+  PENDING
+  PAID
+  CANCELLED
+}

@@ -1,0 +1,48 @@
+import type { Config } from "tailwindcss";
+
+const config: Config = {
+  content: [
+    "./pages/**/*.{js,ts,jsx,tsx,mdx}",
+    "./components/**/*.{js,ts,jsx,tsx,mdx}",
+    "./app/**/*.{js,ts,jsx,tsx,mdx}",
+  ],
+  theme: {
+    extend: {
+      colors: {
+        background: "var(--background)",
+        foreground: "var(--foreground)",
+        // Fizmo custom colors
+        fizmo: {
+          purple: {
+            50: '#faf5ff',
+            100: '#f3e8ff',
+            200: '#e9d5ff',
+            300: '#d8b4fe',
+            400: '#c084fc',
+            500: '#a855f7', // Main purple
+            600: '#9333ea',
+            700: '#7e22ce',
+            800: '#6b21a8',
+            900: '#581c87',
+          },
+          pink: {
+            400: '#f472b6',
+            500: '#ec4899', // Main pink
+            600: '#db2777',
+          },
+          dark: {
+            900: '#0f172a', // Main dark background
+            800: '#1e293b',
+            700: '#334155',
+          }
+        },
+      },
+      backgroundImage: {
+        'gradient-fizmo': 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)',
+        'gradient-dark': 'linear-gradient(180deg, #0f172a 0%, #1e293b 100%)',
+      },
+    },
+  },
+  plugins: [],
+};
+export default config;
