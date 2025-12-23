@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/context/AuthContext";
 import { KPICard } from "@/components/dashboard/KPICard";
 import { AreaChart } from "@/components/charts/AreaChart";
+import { ForexPrices } from "@/components/dashboard/ForexPrices";
 import { FaDollarSign, FaArrowDown, FaChartBar } from "react-icons/fa";
 
 export default function DashboardPage() {
@@ -116,6 +117,9 @@ export default function DashboardPage() {
         {/* Portfolio Chart */}
         <AreaChart data={portfolioData} color="#a855f7" height={256} />
       </div>
+
+      {/* Live Forex Prices */}
+      <ForexPrices />
 
       {/* Tokens & Chain Allocation */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
