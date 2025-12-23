@@ -20,6 +20,7 @@ export function ForexPrices() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [updating, setUpdating] = useState(false);
 
   // Fetch prices from API
   const fetchPrices = async () => {
@@ -44,11 +45,34 @@ export function ForexPrices() {
     }
   };
 
-  // Initial fetch and set up auto-refresh every 30 seconds
+  // Trigger price update from Alpha Vantage
+  const updatePrices = async () => {
+    setUpdating(true);
+    setError(null);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch("/api/cron/update-prices", {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+
+      if (response.ok) {
+        // Wait a moment for database to update
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        // Fetch the updated prices
+        await fetchPrices();
+      } else {
+        setError("Failed to update prices from Alpha Vantage");
+      }
+    } catch (err: any) {
+      setError(err.message || "Failed to update prices");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  // Initial fetch only (no auto-refresh)
   useEffect(() => {
     fetchPrices();
-    const interval = setInterval(fetchPrices, 30000); // Refresh every 30 seconds
-    return () => clearInterval(interval);
   }, []);
 
   const getTrendIcon = (changePercent: string) => {
@@ -106,15 +130,21 @@ export function ForexPrices() {
       <div className="glassmorphic rounded-xl p-6">
         <div className="text-center py-8">
           <p className="text-gray-400 mb-4">
-            No forex prices available. Prices will update automatically every 15 minutes.
+            No forex prices available. Click below to fetch live prices from Alpha Vantage.
           </p>
           <button
-            onClick={fetchPrices}
-            className="px-4 py-2 bg-fizmo-purple-500 text-white rounded-lg hover:bg-fizmo-purple-600 flex items-center space-x-2 mx-auto"
+            onClick={updatePrices}
+            disabled={updating}
+            className="px-6 py-3 bg-fizmo-purple-500 text-white rounded-lg hover:bg-fizmo-purple-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 mx-auto"
           >
-            <FaSync />
-            <span>Refresh</span>
+            <FaSync className={updating ? "animate-spin" : ""} />
+            <span>{updating ? "Fetching Latest Prices..." : "Fetch Latest Prices"}</span>
           </button>
+          {updating && (
+            <p className="text-sm text-gray-500 mt-3">
+              This may take up to 60 seconds...
+            </p>
+          )}
         </div>
       </div>
     );
@@ -130,12 +160,24 @@ export function ForexPrices() {
             {lastUpdate && `Last updated: ${formatTime(lastUpdate)}`}
           </p>
         </div>
-        <button
-          onClick={fetchPrices}
-          className="p-2 bg-fizmo-dark-800 hover:bg-fizmo-dark-700 rounded-lg transition-colors text-fizmo-purple-400"
-        >
-          <FaSync className="text-lg" />
-        </button>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={fetchPrices}
+            disabled={updating}
+            className="p-2 bg-fizmo-dark-800 hover:bg-fizmo-dark-700 rounded-lg transition-colors text-fizmo-purple-400 disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Refresh from database"
+          >
+            <FaSync className="text-lg" />
+          </button>
+          <button
+            onClick={updatePrices}
+            disabled={updating}
+            className="px-4 py-2 bg-fizmo-purple-500 text-white rounded-lg hover:bg-fizmo-purple-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+          >
+            <FaSync className={updating ? "animate-spin" : ""} />
+            <span>{updating ? "Updating..." : "Update Prices"}</span>
+          </button>
+        </div>
       </div>
 
       {/* Price Grid */}
@@ -188,7 +230,7 @@ export function ForexPrices() {
       {/* Info */}
       <div className="mt-6 pt-4 border-t border-fizmo-dark-700 text-sm text-gray-400">
         <p>
-          Prices update automatically every 15 minutes • Data provided by Alpha Vantage
+          Click "Update Prices" to fetch latest rates from Alpha Vantage • Updates may take up to 60 seconds
         </p>
       </div>
     </div>
