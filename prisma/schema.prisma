@@ -47,11 +47,12 @@ model Client {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  accounts    Account[]
-  deposits    Deposit[]
-  withdrawals Withdrawal[]
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accounts     Account[]
+  deposits     Deposit[]
+  withdrawals  Withdrawal[]
   kycDocuments KYCDocument[]
+  bankAccounts BankAccount[]
 
   @@map("clients")
 }
@@ -99,36 +100,41 @@ model LedgerEntry {
 
 // Deposit model - Track incoming funds
 model Deposit {
-  id          String        @id @default(cuid())
-  clientId    String        @map("client_id")
-  amount      Decimal       @db.Decimal(18, 2)
-  currency    String        @default("USD")
-  provider    String        // Payment provider name
-  providerTx  String?       @map("provider_tx") // Provider transaction ID
-  status      PaymentStatus @default(PENDING)
-  metadata    Json?
-  createdAt   DateTime      @default(now()) @map("created_at")
-  updatedAt   DateTime      @updatedAt @map("updated_at")
+  id             String        @id @default(cuid())
+  clientId       String        @map("client_id")
+  amount         Decimal       @db.Decimal(18, 2)
+  currency       String        @default("USD")
+  paymentMethod  PaymentMethod @map("payment_method") @default(BANK_TRANSFER)
+  bankAccountId  String?       @map("bank_account_id") // Reference to client's bank account
+  provider       String?       // Payment provider name (Stripe, PayPal, etc.)
+  providerTx     String?       @map("provider_tx") // Provider transaction ID
+  referenceNumber String?      @map("reference_number") // Client's bank transfer reference
+  status         PaymentStatus @default(PENDING)
+  metadata       Json?
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
 
-  client      Client        @relation(fields: [clientId], references: [id])
+  client         Client        @relation(fields: [clientId], references: [id])
 
   @@map("deposits")
 }
 
 // Withdrawal model - Track outgoing funds
 model Withdrawal {
-  id          String        @id @default(cuid())
-  clientId    String        @map("client_id")
-  amount      Decimal       @db.Decimal(18, 2)
-  currency    String        @default("USD")
-  provider    String
-  providerTx  String?       @map("provider_tx")
-  status      PaymentStatus @default(PENDING)
-  metadata    Json?
-  createdAt   DateTime      @default(now()) @map("created_at")
-  updatedAt   DateTime      @updatedAt @map("updated_at")
+  id             String        @id @default(cuid())
+  clientId       String        @map("client_id")
+  amount         Decimal       @db.Decimal(18, 2)
+  currency       String        @default("USD")
+  paymentMethod  PaymentMethod @map("payment_method") @default(BANK_TRANSFER)
+  bankAccountId  String?       @map("bank_account_id") // Where to send funds
+  provider       String?       // Payment provider name
+  providerTx     String?       @map("provider_tx")
+  status         PaymentStatus @default(PENDING)
+  metadata       Json?
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
 
-  client      Client        @relation(fields: [clientId], references: [id])
+  client         Client        @relation(fields: [clientId], references: [id])
 
   @@map("withdrawals")
 }
@@ -303,6 +309,36 @@ enum KYCDocumentStatus {
   APPROVED
   REJECTED
   UNDER_REVIEW
+}
+
+enum PaymentMethod {
+  BANK_TRANSFER
+  CREDIT_CARD
+  CRYPTO
+  E_WALLET
+}
+
+// BankAccount model - Client bank account details for transfers
+model BankAccount {
+  id              String   @id @default(cuid())
+  clientId        String   @map("client_id")
+  bankName        String   @map("bank_name")
+  accountHolderName String @map("account_holder_name")
+  accountNumber   String   @map("account_number")
+  routingNumber   String?  @map("routing_number") // For US banks
+  swiftCode       String?  @map("swift_code") // For international
+  iban            String?  // For European banks
+  country         String
+  currency        String   @default("USD")
+  isVerified      Boolean  @default(false) @map("is_verified")
+  isPrimary       Boolean  @default(false) @map("is_primary")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+  @@map("bank_accounts")
 }
 
 // ForexPrice model - Real-time forex prices
