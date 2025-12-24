@@ -377,3 +377,16 @@ model ForexPrice {
   @@index([lastUpdated])
   @@map("forex_prices")
 }
+
+// Role model - User roles with permissions
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique // Admin, Support Agent, Compliance Officer, etc.
+  description String?
+  permissions String[] // Array of permission strings: clients.view, deposits.approve, etc.
+  isSystem    Boolean  @default(false) @map("is_system") // System roles cannot be deleted
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("roles")
+}
