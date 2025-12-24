@@ -160,6 +160,23 @@ model Trade {
   @@map("trades")
 }
 
+// IntroducingBroker model - IB partners who refer clients
+model IntroducingBroker {
+  id              String   @id @default(cuid())
+  ibId            String   @unique @map("ib_id") // IB-10001, IB-10002, etc.
+  name            String
+  email           String   @unique
+  tier            IBTier   @default(BRONZE)
+  commissionRate  Decimal  @map("commission_rate") @db.Decimal(5, 2) // Percentage
+  status          IBStatus @default(ACTIVE)
+  joinDate        DateTime @map("join_date") @default(now())
+  lastPayout      DateTime? @map("last_payout")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("introducing_brokers")
+}
+
 // IbRelation model - Affiliate hierarchies
 model IbRelation {
   id              String   @id @default(cuid())
@@ -182,7 +199,22 @@ model Commission {
   paidAt      DateTime?       @map("paid_at")
   createdAt   DateTime        @default(now()) @map("created_at")
 
+  @@index([ibId, paidStatus])
   @@map("commissions")
+}
+
+// CommissionPayout model - Monthly IB commission payouts
+model CommissionPayout {
+  id        String          @id @default(cuid())
+  ibId      String          @map("ib_id")
+  period    String          // "November 2024", "December 2024"
+  amount    Decimal         @db.Decimal(18, 2)
+  status    CommissionStatus @default(PENDING)
+  paidAt    DateTime?       @map("paid_at")
+  createdAt DateTime        @default(now()) @map("created_at")
+
+  @@index([ibId, period])
+  @@map("commission_payouts")
 }
 
 // Audit model - Log all admin changes
@@ -333,6 +365,19 @@ enum PaymentMethod {
   CREDIT_CARD
   CRYPTO
   E_WALLET
+}
+
+enum IBTier {
+  PLATINUM
+  GOLD
+  SILVER
+  BRONZE
+}
+
+enum IBStatus {
+  ACTIVE
+  SUSPENDED
+  INACTIVE
 }
 
 // BankAccount model - Client bank account details for transfers
