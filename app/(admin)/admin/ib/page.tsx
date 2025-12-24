@@ -1,108 +1,126 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/Button";
 
 export default function AdminIBPage() {
   const [selectedTab, setSelectedTab] = useState("active");
+  const [ibs, setIbs] = useState<any[]>([]);
+  const [payouts, setPayouts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock data
-  const ibs = [
-    {
-      id: "1",
-      ibId: "IB-10001",
-      name: "Global Trading Partners LLC",
-      email: "contact@globaltradingpartners.com",
-      tier: "PLATINUM",
-      commissionRate: 35.0,
-      clientsReferred: 124,
-      activeClients: 98,
-      totalVolume: 12500000.0,
-      totalCommission: 43750.0,
-      pendingCommission: 2850.0,
-      status: "ACTIVE",
-      joinDate: "2023-06-15",
-      lastPayout: "2024-12-15",
-    },
-    {
-      id: "2",
-      ibId: "IB-10002",
-      name: "FX Masters Network",
-      email: "admin@fxmasters.io",
-      tier: "GOLD",
-      commissionRate: 30.0,
-      clientsReferred: 68,
-      activeClients: 52,
-      totalVolume: 6800000.0,
-      totalCommission: 20400.0,
-      pendingCommission: 1560.0,
-      status: "ACTIVE",
-      joinDate: "2023-09-20",
-      lastPayout: "2024-12-15",
-    },
-    {
-      id: "3",
-      ibId: "IB-10003",
-      name: "Trading Academy Asia",
-      email: "partnership@tradingacademy.asia",
-      tier: "SILVER",
-      commissionRate: 25.0,
-      clientsReferred: 42,
-      activeClients: 35,
-      totalVolume: 3200000.0,
-      totalCommission: 8000.0,
-      pendingCommission: 875.0,
-      status: "ACTIVE",
-      joinDate: "2024-01-10",
-      lastPayout: "2024-12-15",
-    },
-    {
-      id: "4",
-      ibId: "IB-10004",
-      name: "Crypto Bridge Partners",
-      email: "info@cryptobridge.co",
-      tier: "BRONZE",
-      commissionRate: 20.0,
-      clientsReferred: 18,
-      activeClients: 12,
-      totalVolume: 950000.0,
-      totalCommission: 1900.0,
-      pendingCommission: 320.0,
-      status: "SUSPENDED",
-      joinDate: "2024-03-05",
-      lastPayout: "2024-11-15",
-    },
-  ];
+  useEffect(() => {
+    fetchIBs();
+    fetchPayouts();
+  }, []);
 
-  const commissionPayouts = [
-    {
-      id: "1",
-      ibId: "IB-10001",
-      ibName: "Global Trading Partners LLC",
-      amount: 4250.0,
-      period: "November 2024",
-      status: "PAID",
-      paidAt: "2024-12-15 09:30",
-    },
-    {
-      id: "2",
-      ibId: "IB-10002",
-      ibName: "FX Masters Network",
-      amount: 2100.0,
-      period: "November 2024",
-      status: "PAID",
-      paidAt: "2024-12-15 09:30",
-    },
-    {
-      id: "3",
-      ibId: "IB-10003",
-      ibName: "Trading Academy Asia",
-      amount: 950.0,
-      period: "December 2024",
-      status: "PENDING",
-      paidAt: null,
-    },
-  ];
+  async function fetchIBs() {
+    setLoading(true);
+    try {
+      const response = await fetch("/api/admin/ib");
+      if (response.ok) {
+        const data = await response.json();
+        setIbs(data.ibs || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch IBs:", error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function fetchPayouts() {
+    try {
+      const response = await fetch("/api/admin/ib/payouts");
+      if (response.ok) {
+        const data = await response.json();
+        setPayouts(data.payouts || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch payouts:", error);
+    }
+  }
+
+  async function seedIBs() {
+    try {
+      const response = await fetch("/api/admin/ib/seed", {
+        method: "POST",
+      });
+
+      if (response.ok) {
+        alert("Default IBs initialized successfully!");
+        fetchIBs();
+      } else {
+        const data = await response.json();
+        alert(data.error || "Failed to initialize IBs");
+      }
+    } catch (error) {
+      console.error("Failed to seed IBs:", error);
+      alert("Failed to initialize IBs");
+    }
+  }
+
+  async function seedPayouts() {
+    try {
+      const response = await fetch("/api/admin/ib/payouts", {
+        method: "PATCH",
+      });
+
+      if (response.ok) {
+        alert("Default payouts initialized successfully!");
+        fetchPayouts();
+      } else {
+        const data = await response.json();
+        alert(data.error || "Failed to initialize payouts");
+      }
+    } catch (error) {
+      console.error("Failed to seed payouts:", error);
+      alert("Failed to initialize payouts");
+    }
+  }
+
+  async function processPayment(payoutId: string) {
+    if (!confirm("Are you sure you want to process this payout?")) {
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/admin/ib/payouts", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: payoutId }),
+      });
+
+      if (response.ok) {
+        alert("Payout processed successfully!");
+        fetchPayouts();
+        fetchIBs(); // Refresh to update last payout dates
+      } else {
+        const data = await response.json();
+        alert(data.error || "Failed to process payout");
+      }
+    } catch (error) {
+      console.error("Failed to process payout:", error);
+      alert("Failed to process payout");
+    }
+  }
+
+  // Calculate aggregate stats
+  const totalIBs = ibs.length;
+  const activeIBs = ibs.filter((ib) => ib.status === "ACTIVE").length;
+  const totalVolume30d = ibs.reduce((sum, ib) => sum + ib.totalVolume, 0);
+  const totalPendingCommission = ibs.reduce(
+    (sum, ib) => sum + ib.pendingCommission,
+    0
+  );
+  const paidPayouts30d = payouts.filter((p) => p.status === "PAID");
+  const totalPaid30d = paidPayouts30d.reduce((sum, p) => sum + p.amount, 0);
+
+  // Calculate tier distribution
+  const platinumCount = ibs.filter((ib) => ib.tier === "PLATINUM").length;
+  const goldCount = ibs.filter((ib) => ib.tier === "GOLD").length;
+  const silverCount = ibs.filter((ib) => ib.tier === "SILVER").length;
+  const bronzeCount = ibs.filter((ib) => ib.tier === "BRONZE").length;
 
   return (
     <div className="space-y-6">
@@ -122,28 +140,44 @@ export default function AdminIBPage() {
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <div className="glassmorphic rounded-xl p-4">
           <p className="text-gray-400 text-sm mb-1">Total IBs</p>
-          <p className="text-2xl font-bold text-white">248</p>
-          <p className="text-green-500 text-sm">+12 this month</p>
+          <p className="text-2xl font-bold text-white">{totalIBs}</p>
+          <p className="text-gray-400 text-sm">
+            {ibs.length === 0 ? (
+              <button onClick={seedIBs} className="text-fizmo-purple-400 hover:underline">
+                Initialize IBs
+              </button>
+            ) : (
+              "All partners"
+            )}
+          </p>
         </div>
         <div className="glassmorphic rounded-xl p-4">
           <p className="text-gray-400 text-sm mb-1">Active IBs</p>
-          <p className="text-2xl font-bold text-green-500">186</p>
-          <p className="text-gray-400 text-sm">75% active rate</p>
+          <p className="text-2xl font-bold text-green-500">{activeIBs}</p>
+          <p className="text-gray-400 text-sm">
+            {totalIBs > 0 ? `${((activeIBs / totalIBs) * 100).toFixed(0)}% active rate` : "0%"}
+          </p>
         </div>
         <div className="glassmorphic rounded-xl p-4">
           <p className="text-gray-400 text-sm mb-1">Total Volume (30d)</p>
-          <p className="text-2xl font-bold text-white">$45.2M</p>
-          <p className="text-green-500 text-sm">+18.5%</p>
+          <p className="text-2xl font-bold text-white">
+            ${(totalVolume30d / 1000000).toFixed(1)}M
+          </p>
+          <p className="text-gray-400 text-sm">Trading volume</p>
         </div>
         <div className="glassmorphic rounded-xl p-4">
           <p className="text-gray-400 text-sm mb-1">Pending Commission</p>
-          <p className="text-2xl font-bold text-yellow-500">$28,450</p>
-          <p className="text-gray-400 text-sm">Due Dec 31</p>
+          <p className="text-2xl font-bold text-yellow-500">
+            ${totalPendingCommission.toLocaleString()}
+          </p>
+          <p className="text-gray-400 text-sm">Unpaid commissions</p>
         </div>
         <div className="glassmorphic rounded-xl p-4">
           <p className="text-gray-400 text-sm mb-1">Paid (30d)</p>
-          <p className="text-2xl font-bold text-green-500">$124,300</p>
-          <p className="text-gray-400 text-sm">142 payouts</p>
+          <p className="text-2xl font-bold text-green-500">
+            ${totalPaid30d.toLocaleString()}
+          </p>
+          <p className="text-gray-400 text-sm">{paidPayouts30d.length} payouts</p>
         </div>
       </div>
 
@@ -159,7 +193,7 @@ export default function AdminIBPage() {
                   : "bg-fizmo-dark-800 text-gray-400 hover:text-white"
               }`}
             >
-              Active (186)
+              Active ({activeIBs})
             </button>
             <button
               onClick={() => setSelectedTab("all")}
@@ -310,9 +344,22 @@ export default function AdminIBPage() {
       {/* Commission Payouts Table */}
       {selectedTab === "payouts" && (
         <div className="glassmorphic rounded-xl p-6">
-          <h2 className="text-xl font-bold text-white mb-4">Commission Payouts</h2>
-          <div className="overflow-x-auto">
-            <table className="w-full">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-white">Commission Payouts</h2>
+            {payouts.length === 0 && (
+              <Button onClick={seedPayouts} size="sm">
+                Initialize Payouts
+              </Button>
+            )}
+          </div>
+          {payouts.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-gray-400 mb-4">No payouts found</p>
+              <Button onClick={seedPayouts}>Initialize Default Payouts</Button>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
               <thead>
                 <tr className="border-b border-fizmo-purple-500/20">
                   <th className="text-left text-gray-400 py-3 px-4 text-sm">PERIOD</th>
@@ -324,7 +371,7 @@ export default function AdminIBPage() {
                 </tr>
               </thead>
               <tbody>
-                {commissionPayouts.map((payout) => (
+                {payouts.map((payout: any) => (
                   <tr
                     key={payout.id}
                     className="border-b border-fizmo-purple-500/10 hover:bg-fizmo-dark-800 transition-all"
@@ -353,7 +400,10 @@ export default function AdminIBPage() {
                     </td>
                     <td className="py-3 px-4 text-sm">
                       {payout.status === "PENDING" ? (
-                        <button className="px-3 py-1 bg-green-500/20 text-green-500 rounded hover:bg-green-500/30 text-xs">
+                        <button
+                          onClick={() => processPayment(payout.id)}
+                          className="px-3 py-1 bg-green-500/20 text-green-500 rounded hover:bg-green-500/30 text-xs"
+                        >
                           Process Payment
                         </button>
                       ) : (
@@ -367,14 +417,17 @@ export default function AdminIBPage() {
               </tbody>
             </table>
           </div>
+          )}
 
           {/* Payout Schedule Info */}
-          <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-            <p className="text-blue-500 text-sm">
-              <strong>Payout Schedule:</strong> Commission payouts are processed on the 15th of
-              each month for the previous month's trading volume. Minimum payout threshold: $100.
-            </p>
-          </div>
+          {payouts.length > 0 && (
+            <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+              <p className="text-blue-500 text-sm">
+                <strong>Payout Schedule:</strong> Commission payouts are processed on the 15th of
+                each month for the previous month's trading volume. Minimum payout threshold: $100.
+              </p>
+            </div>
+          )}
         </div>
       )}
 
@@ -415,37 +468,49 @@ export default function AdminIBPage() {
             <div>
               <div className="flex justify-between text-sm mb-2">
                 <span className="text-gray-400">Platinum Tier</span>
-                <span className="text-purple-400 font-semibold">28 IBs</span>
+                <span className="text-purple-400 font-semibold">{platinumCount} IBs</span>
               </div>
               <div className="h-3 bg-fizmo-dark-800 rounded-full overflow-hidden">
-                <div className="h-full bg-purple-500 rounded-full" style={{ width: "11.3%" }}></div>
+                <div
+                  className="h-full bg-purple-500 rounded-full"
+                  style={{ width: totalIBs > 0 ? `${(platinumCount / totalIBs) * 100}%` : "0%" }}
+                ></div>
               </div>
             </div>
             <div>
               <div className="flex justify-between text-sm mb-2">
                 <span className="text-gray-400">Gold Tier</span>
-                <span className="text-yellow-500 font-semibold">54 IBs</span>
+                <span className="text-yellow-500 font-semibold">{goldCount} IBs</span>
               </div>
               <div className="h-3 bg-fizmo-dark-800 rounded-full overflow-hidden">
-                <div className="h-full bg-yellow-500 rounded-full" style={{ width: "21.8%" }}></div>
+                <div
+                  className="h-full bg-yellow-500 rounded-full"
+                  style={{ width: totalIBs > 0 ? `${(goldCount / totalIBs) * 100}%` : "0%" }}
+                ></div>
               </div>
             </div>
             <div>
               <div className="flex justify-between text-sm mb-2">
                 <span className="text-gray-400">Silver Tier</span>
-                <span className="text-gray-400 font-semibold">82 IBs</span>
+                <span className="text-gray-400 font-semibold">{silverCount} IBs</span>
               </div>
               <div className="h-3 bg-fizmo-dark-800 rounded-full overflow-hidden">
-                <div className="h-full bg-gray-500 rounded-full" style={{ width: "33.1%" }}></div>
+                <div
+                  className="h-full bg-gray-500 rounded-full"
+                  style={{ width: totalIBs > 0 ? `${(silverCount / totalIBs) * 100}%` : "0%" }}
+                ></div>
               </div>
             </div>
             <div>
               <div className="flex justify-between text-sm mb-2">
                 <span className="text-gray-400">Bronze Tier</span>
-                <span className="text-orange-500 font-semibold">84 IBs</span>
+                <span className="text-orange-500 font-semibold">{bronzeCount} IBs</span>
               </div>
               <div className="h-3 bg-fizmo-dark-800 rounded-full overflow-hidden">
-                <div className="h-full bg-orange-500 rounded-full" style={{ width: "33.8%" }}></div>
+                <div
+                  className="h-full bg-orange-500 rounded-full"
+                  style={{ width: totalIBs > 0 ? `${(bronzeCount / totalIBs) * 100}%` : "0%" }}
+                ></div>
               </div>
             </div>
           </div>
