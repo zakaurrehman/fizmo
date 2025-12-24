@@ -211,6 +211,23 @@ model Session {
   @@map("sessions")
 }
 
+// SystemSetting model - Application configuration settings
+model SystemSetting {
+  id          String   @id @default(cuid())
+  category    String   // General, Trading, Financial, Security, Compliance, Notifications, Integrations
+  key         String   @unique
+  value       String   // Stored as JSON string for flexibility
+  label       String   // Human-readable label
+  description String?  // Optional description
+  dataType    String   @default("string") // string, number, boolean, json
+  updatedBy   String?  @map("updated_by") // Admin user ID who last updated
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([category])
+  @@map("system_settings")
+}
+
 // KYCDocument model - KYC document uploads
 model KYCDocument {
   id              String          @id @default(cuid())

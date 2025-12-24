@@ -26,75 +26,7 @@ export default function AdminAMLPage() {
     }
   }
 
-  // Fallback mock data for demo - would be removed once full AML system is in place
-  const mockAlerts = [
-    {
-      id: "1",
-      clientId: "CL-100245",
-      clientName: "Marcus Kane",
-      riskLevel: "HIGH",
-      alertType: "Large Transaction",
-      amount: 95000.0,
-      currency: "USD",
-      flaggedAt: "2024-12-21 14:30",
-      description: "Single transaction exceeds $50,000 threshold",
-      status: "UNDER_REVIEW",
-      assignedTo: "Compliance Team A",
-    },
-    {
-      id: "2",
-      clientId: "CL-100248",
-      clientName: "Viktor Reznov",
-      riskLevel: "HIGH",
-      alertType: "Pattern Matching",
-      amount: 45000.0,
-      currency: "USD",
-      flaggedAt: "2024-12-21 11:15",
-      description: "Structuring: Multiple deposits just under reporting threshold",
-      status: "ESCALATED",
-      assignedTo: "Senior Analyst",
-    },
-    {
-      id: "3",
-      clientId: "CL-100251",
-      clientName: "Nina Williams",
-      riskLevel: "MEDIUM",
-      alertType: "Geographic Risk",
-      amount: 12000.0,
-      currency: "EUR",
-      flaggedAt: "2024-12-21 09:20",
-      description: "Transaction from high-risk jurisdiction",
-      status: "PENDING",
-      assignedTo: null,
-    },
-    {
-      id: "4",
-      clientId: "CL-100253",
-      clientName: "Alex Mercer",
-      riskLevel: "MEDIUM",
-      alertType: "Rapid Turnover",
-      amount: 28000.0,
-      currency: "USD",
-      flaggedAt: "2024-12-20 16:45",
-      description: "Funds deposited and withdrawn within 24 hours",
-      status: "UNDER_REVIEW",
-      assignedTo: "Compliance Team B",
-    },
-    {
-      id: "5",
-      clientId: "CL-100234",
-      clientName: "Sarah Connor",
-      riskLevel: "LOW",
-      alertType: "Routine Check",
-      amount: 3500.0,
-      currency: "USD",
-      flaggedAt: "2024-12-20 10:30",
-      description: "Periodic enhanced due diligence review",
-      status: "CLEARED",
-      assignedTo: "Compliance Team A",
-    },
-  ];
-
+  // TODO: Sanctions screening data - currently mock, needs API integration with compliance provider
   const sanctionScreening = [
     {
       id: "1",
