@@ -12,7 +12,10 @@ export async function sendVerificationEmail(email: string, token: string, name?:
   const verificationUrl = `${APP_URL}/verify-email?token=${token}`;
 
   try {
-    await resend.emails.send({
+    console.log(`[Email] Attempting to send verification email to: ${email}`);
+    console.log(`[Email] FROM_EMAIL: ${FROM_EMAIL}`);
+
+    const { data, error } = await resend.emails.send({
       from: `Fizmo <${FROM_EMAIL}>`,
       to: email,
       subject: 'Verify your email address - Fizmo',
@@ -56,9 +59,15 @@ export async function sendVerificationEmail(email: string, token: string, name?:
       `,
     });
 
-    return { success: true };
+    if (error) {
+      console.error('[Email] Resend API error:', error);
+      return { success: false, error };
+    }
+
+    console.log('[Email] Resend API response - Email ID:', data?.id);
+    return { success: true, emailId: data?.id };
   } catch (error) {
-    console.error('Failed to send verification email:', error);
+    console.error('[Email] Failed to send verification email:', error);
     return { success: false, error };
   }
 }

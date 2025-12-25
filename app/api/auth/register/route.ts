@@ -96,6 +96,10 @@ export async function POST(request: NextRequest) {
     // Generate email verification token
     const verificationToken = crypto.randomBytes(32).toString("hex");
 
+    // Check if email service is properly configured (has verified domain)
+    // If not, auto-verify users so they can login
+    const hasVerifiedDomain = process.env.FROM_EMAIL && !process.env.FROM_EMAIL.includes('@resend.dev');
+
     // Create user and client in a transaction
     const user = await prisma.user.create({
       data: {
@@ -103,8 +107,8 @@ export async function POST(request: NextRequest) {
         email: email.toLowerCase(),
         passwordHash,
         role: "CLIENT",
-        verificationToken,
-        emailVerified: false,
+        verificationToken: hasVerifiedDomain ? verificationToken : null,
+        emailVerified: !hasVerifiedDomain, // Auto-verify if no domain configured
         client: {
           create: {
             brokerId,
@@ -120,15 +124,19 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Send verification email
-    const emailResult = await sendVerificationEmail(user.email, verificationToken, firstName);
+    // Send verification email only if domain is configured
+    if (hasVerifiedDomain) {
+      const emailResult = await sendVerificationEmail(user.email, verificationToken, firstName);
 
-    console.log(`User registered: ${user.email}`);
-    if (emailResult.success) {
-      console.log(`✅ Verification email sent successfully to: ${user.email}`);
+      console.log(`User registered: ${user.email}`);
+      if (emailResult.success) {
+        console.log(`✅ Verification email sent successfully to: ${user.email}`);
+      } else {
+        console.error(`❌ Failed to send verification email to: ${user.email}`, emailResult.error);
+        console.error("Check RESEND_API_KEY and FROM_EMAIL environment variables");
+      }
     } else {
-      console.error(`❌ Failed to send verification email to: ${user.email}`, emailResult.error);
-      console.error("Check RESEND_API_KEY and FROM_EMAIL environment variables");
+      console.log(`User registered (auto-verified, no email domain configured): ${user.email}`);
     }
 
     // Create session
