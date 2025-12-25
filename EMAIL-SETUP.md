@@ -1,5 +1,28 @@
 # Email Setup Guide - Fizmo Trader
 
+## Common User Issues
+
+### Issue 1: "User with this email already exists" - Can't Login or Re-register
+
+**Problem:**
+- You registered but never received the verification email
+- Now you can't login (account not verified) and can't re-register (email exists)
+
+**Solution:**
+1. Go to the login page: `/login`
+2. Click on **"Resend Verification"** link (green text below the Sign Up link)
+3. Enter your email address
+4. Click **"Resend Verification Email"**
+5. Check your inbox (and spam folder!) for the new verification email
+6. Click the verification link in the email
+7. Now you can login with your credentials
+
+**Alternative:**
+- If you registered, you can also go directly to `/verify-email?email=your@email.com`
+- This page has a "Resend Verification Email" button
+
+---
+
 ## Issue: Not Receiving Verification or Password Reset Emails
 
 If you're not receiving verification emails after registration or password reset emails, follow this guide to configure email service properly.
