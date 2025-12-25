@@ -7,16 +7,21 @@ import { useState, Suspense } from "react";
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
-  const email = searchParams.get("email") || "";
+  const emailFromUrl = searchParams.get("email") || "";
+  const [email, setEmail] = useState(emailFromUrl);
   const [resendLoading, setResendLoading] = useState(false);
   const [resendMessage, setResendMessage] = useState("");
 
   const handleResendEmail = async () => {
+    if (!email || !email.includes("@")) {
+      setResendMessage("Please enter a valid email address.");
+      return;
+    }
+
     setResendLoading(true);
     setResendMessage("");
 
     try {
-      // TODO: Implement actual resend email API call
       const response = await fetch("/api/auth/resend-verification", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -24,9 +29,10 @@ function VerifyEmailContent() {
       });
 
       if (response.ok) {
-        setResendMessage("Verification email sent successfully!");
+        setResendMessage("Verification email sent successfully! Check your inbox.");
       } else {
-        setResendMessage("Failed to resend email. Please try again.");
+        const data = await response.json();
+        setResendMessage(data.message || "Failed to resend email. Please try again.");
       }
     } catch (error) {
       setResendMessage("An error occurred. Please try again later.");
@@ -75,11 +81,21 @@ function VerifyEmailContent() {
                 />
               </svg>
             </div>
-            <h3 className="text-2xl font-bold text-white mb-2">Check Your Email</h3>
-            <p className="text-gray-400 text-sm">
-              We've sent a verification link to
-            </p>
-            <p className="text-purple-400 font-semibold mt-1">{email}</p>
+            <h3 className="text-2xl font-bold text-white mb-2">
+              {emailFromUrl ? "Check Your Email" : "Resend Verification Email"}
+            </h3>
+            {emailFromUrl ? (
+              <>
+                <p className="text-gray-400 text-sm">
+                  We've sent a verification link to
+                </p>
+                <p className="text-purple-400 font-semibold mt-1">{email}</p>
+              </>
+            ) : (
+              <p className="text-gray-400 text-sm">
+                Enter your email address to receive a new verification link
+              </p>
+            )}
           </div>
 
           {/* Instructions */}
@@ -102,20 +118,36 @@ function VerifyEmailContent() {
           </div>
 
           {/* Resend Email Section */}
-          <div className="text-center mb-6">
-            <p className="text-gray-400 text-sm mb-3">
-              Didn't receive the email? Check your spam folder or
+          <div className="mb-6">
+            <p className="text-gray-400 text-sm mb-4 text-center">
+              Didn't receive the email? Check your spam folder or enter your email below
             </p>
+
+            {/* Email Input */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Email Address
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter your email address"
+                className="w-full px-4 py-3 bg-fizmo-dark-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 transition-colors"
+                required
+              />
+            </div>
+
             <Button
               variant="outline"
               onClick={handleResendEmail}
               loading={resendLoading}
-              className="mx-auto"
+              className="w-full"
             >
               Resend Verification Email
             </Button>
             {resendMessage && (
-              <p className={`text-sm mt-3 ${resendMessage.includes("success") ? "text-green-500" : "text-red-500"}`}>
+              <p className={`text-sm mt-3 text-center ${resendMessage.includes("success") ? "text-green-500" : "text-red-500"}`}>
                 {resendMessage}
               </p>
             )}
