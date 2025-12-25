@@ -20,7 +20,12 @@ export default function AccountsPage() {
 
   async function fetchAccounts() {
     try {
-      const response = await fetch("/api/accounts");
+      const token = localStorage.getItem("fizmo_token");
+      const response = await fetch("/api/accounts", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
       if (response.ok) {
         const data = await response.json();
         setAccounts(data.accounts || []);
@@ -35,9 +40,13 @@ export default function AccountsPage() {
   async function handleCreateAccount() {
     setCreating(true);
     try {
+      const token = localStorage.getItem("fizmo_token");
       const response = await fetch("/api/accounts", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify(formData),
       });
 
@@ -45,9 +54,14 @@ export default function AccountsPage() {
         await fetchAccounts();
         setShowCreateModal(false);
         setFormData({ accountType: "DEMO", currency: "USD", leverage: "100" });
+      } else {
+        const error = await response.json();
+        console.error("Failed to create account:", error);
+        alert(`Failed to create account: ${error.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error("Failed to create account:", error);
+      alert("An error occurred while creating the account");
     } finally {
       setCreating(false);
     }
