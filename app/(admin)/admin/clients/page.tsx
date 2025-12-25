@@ -4,12 +4,14 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { FaTrash } from "react-icons/fa";
 
 export default function AdminClientsPage() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const [clients, setClients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletingClientId, setDeletingClientId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchClients();
@@ -17,7 +19,12 @@ export default function AdminClientsPage() {
 
   async function fetchClients() {
     try {
-      const response = await fetch("/api/admin/clients");
+      const token = localStorage.getItem("fizmo_token");
+      const response = await fetch("/api/admin/clients", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
       if (response.ok) {
         const data = await response.json();
         setClients(data.clients || []);
@@ -26,6 +33,41 @@ export default function AdminClientsPage() {
       console.error("Failed to fetch clients:", error);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleDeleteClient(clientId: string, clientName: string) {
+    const confirmMessage = `Are you sure you want to delete client "${clientName}"?\n\nThis will:\n- Mark the client as DELETED\n- Invalidate all sessions\n- Prevent future login\n\nThis action can only be reversed by a super admin.`;
+
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+
+    setDeletingClientId(clientId);
+
+    try {
+      const token = localStorage.getItem("fizmo_token");
+      const response = await fetch(`/api/admin/clients?id=${clientId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert(`Client deleted successfully: ${data.email}`);
+        // Refresh the clients list
+        await fetchClients();
+      } else {
+        alert(`Failed to delete client: ${data.error}`);
+      }
+    } catch (error: any) {
+      console.error("Delete client error:", error);
+      alert(`Error deleting client: ${error.message}`);
+    } finally {
+      setDeletingClientId(null);
     }
   }
 
@@ -154,6 +196,20 @@ export default function AdminClientsPage() {
                           View
                         </button>
                         <button className="text-blue-400 hover:text-blue-300">Edit</button>
+                        <button
+                          onClick={() =>
+                            handleDeleteClient(
+                              client.id,
+                              `${client.firstName} ${client.lastName}`
+                            )
+                          }
+                          disabled={deletingClientId === client.id}
+                          className="text-red-400 hover:text-red-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
+                          title="Delete client"
+                        >
+                          <FaTrash className="text-xs" />
+                          <span>{deletingClientId === client.id ? "Deleting..." : "Delete"}</span>
+                        </button>
                       </div>
                     </td>
                   </tr>
