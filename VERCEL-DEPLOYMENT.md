@@ -26,7 +26,7 @@ Go to your Vercel project → Settings → Environment Variables
 
 **Required Variables:**
 ```bash
-# Critical for login
+# Critical for authentication
 JWT_SECRET=your-super-secret-jwt-key-minimum-32-characters-long
 SESSION_SECRET=your-super-secret-session-key-minimum-32-characters
 
@@ -36,7 +36,22 @@ DATABASE_URL=postgresql://user:password@host:5432/database?sslmode=require
 # Node environment
 NODE_ENV=production
 NEXT_PUBLIC_APP_URL=https://your-app.vercel.app
+
+# Email service (Required for verification emails and password reset)
+RESEND_API_KEY=re_your_actual_api_key_here
+FROM_EMAIL=noreply@yourdomain.com
 ```
+
+**⚠️ Email Configuration Required:**
+
+If you're not receiving verification emails or password reset emails, you need to configure Resend:
+
+1. Create account at [https://resend.com](https://resend.com)
+2. Get API key from dashboard
+3. Add `RESEND_API_KEY` and `FROM_EMAIL` to Vercel environment variables
+4. **Important:** Redeploy after adding environment variables
+
+See [EMAIL-SETUP.md](./EMAIL-SETUP.md) for detailed email configuration guide.
 
 ### 2. Database Connection Issues
 

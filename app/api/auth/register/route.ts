@@ -110,10 +110,15 @@ export async function POST(request: NextRequest) {
     });
 
     // Send verification email
-    await sendVerificationEmail(user.email, verificationToken, firstName);
+    const emailResult = await sendVerificationEmail(user.email, verificationToken, firstName);
 
     console.log(`User registered: ${user.email}`);
-    console.log(`Verification email sent to: ${user.email}`);
+    if (emailResult.success) {
+      console.log(`✅ Verification email sent successfully to: ${user.email}`);
+    } else {
+      console.error(`❌ Failed to send verification email to: ${user.email}`, emailResult.error);
+      console.error("Check RESEND_API_KEY and FROM_EMAIL environment variables");
+    }
 
     // Create session
     const token = await createSession(user.id, user.email, user.role, brokerId);
