@@ -1,6 +1,24 @@
 # Vercel Deployment Guide - Fizmo Trader
 
-## Common "Internal Server Error" on Login - Troubleshooting
+## Common "Internal Server Error" on Login/Registration - Troubleshooting
+
+### ✅ RESOLVED: "Broker not found" Error (Fixed in commits 6f2af23 and 395c921)
+
+**Issue:** Login and registration were failing with "Broker not found" error on Vercel.
+
+**Root Cause:** The `requireBrokerId()` function threw an error when no broker was found in request headers. Vercel doesn't have subdomain routing configured yet, so the broker context wasn't available.
+
+**Solution Applied:**
+- Both `/api/auth/login` and `/api/auth/register` now use broker fallback logic
+- They call `ensureDefaultBroker()` to get or create a default broker
+- They wrap `requireBrokerId()` in try-catch and fallback to the default broker ID
+- This allows authentication to work without subdomain routing
+
+**Status:** ✅ Fixed - Login and registration now work on Vercel without subdomain configuration.
+
+---
+
+## Common "Internal Server Error" Troubleshooting
 
 ### 1. Check Environment Variables in Vercel Dashboard
 
