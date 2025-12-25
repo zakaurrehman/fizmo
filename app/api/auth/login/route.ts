@@ -7,9 +7,17 @@ import type { LoginRequest, ApiResponse, AuthResponse } from "@/types/api";
 
 export async function POST(request: NextRequest) {
   try {
-    // Ensure default broker exists and get current broker ID
-    await ensureDefaultBroker();
-    const brokerId = await requireBrokerId();
+    // Ensure default broker exists
+    const defaultBroker = await ensureDefaultBroker();
+
+    // Try to get broker from headers, fallback to default broker
+    let brokerId: string;
+    try {
+      brokerId = await requireBrokerId();
+    } catch (error) {
+      console.log("No broker found in headers, using default broker");
+      brokerId = defaultBroker.id;
+    }
 
     const body: LoginRequest = await request.json();
     const { email, password } = body;
