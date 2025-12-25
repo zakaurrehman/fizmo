@@ -47,4 +47,4 @@ npm run dev
 
 ## 📝 Author
 
-**Shafaqat Rafique**
+**Zaka Ur Rehman**
