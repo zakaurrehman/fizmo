@@ -99,11 +99,17 @@ export default function LoginPage() {
           </form>
 
           {/* Register Link */}
-          <div className="mt-8 text-center">
+          <div className="mt-8 text-center space-y-3">
             <p className="text-sm text-gray-400">
               Don't have an account?{" "}
               <Link href="/register" className="text-purple-400 hover:text-purple-300 transition-colors font-semibold">
                 Sign Up
+              </Link>
+            </p>
+            <p className="text-sm text-gray-400">
+              Didn't receive verification email?{" "}
+              <Link href="/verify-email" className="text-green-400 hover:text-green-300 transition-colors font-semibold">
+                Resend Verification
               </Link>
             </p>
           </div>

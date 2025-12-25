@@ -67,10 +67,21 @@ export async function POST(request: NextRequest) {
     });
 
     if (existingUser) {
+      // Check if user registered but hasn't verified email
+      if (!existingUser.emailVerified) {
+        return NextResponse.json<ApiResponse>(
+          {
+            success: false,
+            error: "An account with this email already exists but is not verified. Please check your email for the verification link, or use 'Resend Verification Email' on the login page.",
+          },
+          { status: 409 }
+        );
+      }
+
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          error: "User with this email already exists",
+          error: "User with this email already exists. Please login instead.",
         },
         { status: 409 }
       );

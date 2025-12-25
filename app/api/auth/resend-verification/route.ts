@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { prisma } from "@/lib/prisma";
+import { sendVerificationEmail } from "@/lib/email";
 import crypto from "crypto";
 
 export async function POST(request: NextRequest) {
@@ -49,16 +50,25 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // TODO: Send verification email
-    // const verifyUrl = `${process.env.NEXT_PUBLIC_APP_URL}/verify?token=${verificationToken}`;
-    // await sendEmail({
-    //   to: user.email,
-    //   subject: "Verify Your Email Address",
-    //   html: `Click here to verify your email: ${verifyUrl}`,
-    // });
+    // Get user's name from client profile
+    const client = await prisma.client.findUnique({
+      where: { userId: user.id },
+    });
+
+    // Send verification email
+    const emailResult = await sendVerificationEmail(
+      user.email,
+      verificationToken,
+      client?.firstName || undefined
+    );
 
     console.log(`Verification email resent to: ${user.email}`);
-    console.log(`Verification token: ${verificationToken}`);
+    if (emailResult.success) {
+      console.log(`✅ Verification email sent successfully to: ${user.email}`);
+    } else {
+      console.error(`❌ Failed to send verification email to: ${user.email}`, emailResult.error);
+      console.error("Check RESEND_API_KEY and FROM_EMAIL environment variables");
+    }
 
     return NextResponse.json(
       {
