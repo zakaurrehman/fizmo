@@ -2,10 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyPassword } from "@/lib/auth/password";
 import { createSession } from "@/lib/auth/session";
+import { ensureDefaultBroker, requireBrokerId } from "@/lib/broker";
 import type { LoginRequest, ApiResponse, AuthResponse } from "@/types/api";
 
 export async function POST(request: NextRequest) {
   try {
+    // Ensure default broker exists and get current broker ID
+    await ensureDefaultBroker();
+    const brokerId = await requireBrokerId();
+
     const body: LoginRequest = await request.json();
     const { email, password } = body;
 
@@ -20,9 +25,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Find user
-    const user = await prisma.user.findUnique({
-      where: { email: email.toLowerCase() },
+    // Find user within this broker
+    // SUPER_ADMIN can login from any broker subdomain
+    const user = await prisma.user.findFirst({
+      where: {
+        email: email.toLowerCase(),
+        OR: [
+          { brokerId },
+          { role: "SUPER_ADMIN" },
+        ],
+      },
       include: {
         client: true,
       },
@@ -63,7 +75,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create session
-    const token = await createSession(user.id, user.email, user.role);
+    const token = await createSession(user.id, user.email, user.role, brokerId);
 
     // Return success response
     return NextResponse.json<ApiResponse<AuthResponse>>(

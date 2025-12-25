@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { verifyAuth } from "@/lib/auth";
+import { verifyAuth, getBrokerIdFromToken } from "@/lib/auth";
 
 // GET - Fetch all accounts (Admin view)
 export async function GET(request: NextRequest) {
@@ -10,10 +10,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const brokerId = await getBrokerIdFromToken(request);
+    if (!brokerId) {
+      return NextResponse.json({ error: "Broker context not found" }, { status: 400 });
+    }
+
     // TODO: Add admin role check here
 
-    // Get all accounts with client information
+    // Get all accounts within this broker
     const accounts = await prisma.account.findMany({
+      where: {
+        brokerId,
+      },
       include: {
         client: {
           select: {

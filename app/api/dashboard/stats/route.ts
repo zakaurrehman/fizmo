@@ -9,9 +9,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get client info
+    // Get client info with broker details
     const client = await prisma.client.findUnique({
       where: { userId: user.id },
+      include: {
+        broker: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            domain: true,
+          },
+        },
+      },
     });
 
     if (!client) {
@@ -58,6 +68,7 @@ export async function GET(request: NextRequest) {
     const apy = 12.3;
 
     return NextResponse.json({
+      broker: client.broker,
       totalAssets,
       totalDeposits,
       apy,

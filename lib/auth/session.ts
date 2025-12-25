@@ -5,9 +5,9 @@ import crypto from "crypto";
 /**
  * Create a new session for a user
  */
-export async function createSession(userId: string, email: string, role: string) {
+export async function createSession(userId: string, email: string, role: string, brokerId: string) {
   // Create JWT token
-  const token = await createToken({ userId, email, role });
+  const token = await createToken({ userId, email, role, brokerId });
 
   // Store session in database
   const expiresAt = new Date();

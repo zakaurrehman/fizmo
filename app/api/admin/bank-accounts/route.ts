@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { verifyAuth } from "@/lib/auth";
+import { verifyAuth, getBrokerIdFromToken } from "@/lib/auth";
 
 /**
  * GET /api/admin/bank-accounts
@@ -13,7 +13,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const brokerId = await getBrokerIdFromToken(request);
+    if (!brokerId) {
+      return NextResponse.json({ error: "Broker context not found" }, { status: 400 });
+    }
+
     const bankAccounts = await prisma.bankAccount.findMany({
+      where: { brokerId },
       include: {
         client: {
           include: {
@@ -52,6 +58,11 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const brokerId = await getBrokerIdFromToken(request);
+    if (!brokerId) {
+      return NextResponse.json({ error: "Broker context not found" }, { status: 400 });
+    }
+
     const body = await request.json();
     const { bankAccountId, isVerified } = body;
 
@@ -60,6 +71,15 @@ export async function PATCH(request: NextRequest) {
         { error: "Bank account ID and verification status required" },
         { status: 400 }
       );
+    }
+
+    // Verify ownership before updating
+    const existing = await prisma.bankAccount.findFirst({
+      where: { id: bankAccountId, brokerId },
+    });
+
+    if (!existing) {
+      return NextResponse.json({ error: "Bank account not found" }, { status: 404 });
     }
 
     const bankAccount = await prisma.bankAccount.update({

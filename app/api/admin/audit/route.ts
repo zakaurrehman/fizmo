@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { verifyAuth } from "@/lib/auth";
+import { verifyAuth, getBrokerIdFromToken } from "@/lib/auth";
 
 // GET - Fetch audit logs generated from system activities (Admin only)
 export async function GET(request: NextRequest) {
@@ -8,6 +8,11 @@ export async function GET(request: NextRequest) {
     const user = await verifyAuth(request);
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const brokerId = await getBrokerIdFromToken(request);
+    if (!brokerId) {
+      return NextResponse.json({ error: "Broker context not found" }, { status: 400 });
     }
 
     // TODO: Add admin role check here
@@ -20,8 +25,9 @@ export async function GET(request: NextRequest) {
     const now = new Date();
     const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
-    // Generate audit logs from deposits
+    // Generate audit logs from deposits within this broker
     const deposits = await prisma.deposit.findMany({
+      where: { brokerId },
       take: limit / 2,
       orderBy: { createdAt: "desc" },
       include: {
@@ -41,8 +47,9 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Generate audit logs from withdrawals
+    // Generate audit logs from withdrawals within this broker
     const withdrawals = await prisma.withdrawal.findMany({
+      where: { brokerId },
       take: limit / 2,
       orderBy: { createdAt: "desc" },
       include: {

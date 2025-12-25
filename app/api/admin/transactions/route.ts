@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { verifyAuth } from "@/lib/auth";
+import { verifyAuth, getBrokerIdFromToken } from "@/lib/auth";
 
 // GET - Fetch all transactions (Admin view - combines deposits and withdrawals)
 export async function GET(request: NextRequest) {
@@ -10,10 +10,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const brokerId = await getBrokerIdFromToken(request);
+    if (!brokerId) {
+      return NextResponse.json({ error: "Broker context not found" }, { status: 400 });
+    }
+
     // TODO: Add admin role check here
 
-    // Get all deposits
+    // Get all deposits within this broker
     const deposits = await prisma.deposit.findMany({
+      where: { brokerId },
       include: {
         account: {
           include: {
@@ -32,8 +38,9 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Get all withdrawals
+    // Get all withdrawals within this broker
     const withdrawals = await prisma.withdrawal.findMany({
+      where: { brokerId },
       include: {
         account: {
           include: {

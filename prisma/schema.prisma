@@ -12,9 +12,41 @@ datasource db {
   provider = "postgresql"
 }
 
+// Broker model - Multi-tenant support for different brokers
+model Broker {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique // broker1, broker2 - used in subdomain
+  domain      String?  @unique // broker1.fizmo.com or custom domain
+  settings    Json?    // Broker-specific settings
+  status      BrokerStatus @default(ACTIVE)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  users               User[]
+  clients             Client[]
+  accounts            Account[]
+  deposits            Deposit[]
+  withdrawals         Withdrawal[]
+  kycDocuments        KYCDocument[]
+  bankAccounts        BankAccount[]
+  ledgerEntries       LedgerEntry[]
+  trades              Trade[]
+  introducingBrokers  IntroducingBroker[]
+  commissions         Commission[]
+  commissionPayouts   CommissionPayout[]
+  ibRelations         IbRelation[]
+  audits              Audit[]
+  systemSettings      SystemSetting[]
+  roles               Role[]
+
+  @@map("brokers")
+}
+
 // User model - Authentication and roles
 model User {
   id               String   @id @default(cuid())
+  brokerId         String?  @map("broker_id")
   email            String   @unique
   passwordHash     String   @map("password_hash")
   role             UserRole @default(CLIENT)
@@ -27,15 +59,18 @@ model User {
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
 
+  broker        Broker?   @relation(fields: [brokerId], references: [id])
   client        Client?
   sessions      Session[]
 
+  @@index([brokerId, email])
   @@map("users")
 }
 
 // Client model - Extended client information
 model Client {
   id          String   @id @default(cuid())
+  brokerId    String?  @map("broker_id")
   userId      String   @unique @map("user_id")
   clientId    String   @unique @map("client_id")
   firstName   String?  @map("first_name")
@@ -47,6 +82,7 @@ model Client {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
+  broker       Broker?        @relation(fields: [brokerId], references: [id])
   user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   accounts     Account[]
   deposits     Deposit[]
@@ -54,12 +90,14 @@ model Client {
   kycDocuments KYCDocument[]
   bankAccounts BankAccount[]
 
+  @@index([brokerId])
   @@map("clients")
 }
 
 // Account model - Trading accounts
 model Account {
   id          String        @id @default(cuid())
+  brokerId    String?       @map("broker_id")
   accountId   String        @unique @map("account_id") // MT4/MT5 account ID
   clientId    String        @map("client_id")
   accountType AccountType   @map("account_type")
@@ -71,16 +109,19 @@ model Account {
   createdAt   DateTime      @default(now()) @map("created_at")
   updatedAt   DateTime      @updatedAt @map("updated_at")
 
-  client       Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  broker        Broker?        @relation(fields: [brokerId], references: [id])
+  client        Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
   ledgerEntries LedgerEntry[]
   trades        Trade[]
 
+  @@index([brokerId])
   @@map("accounts")
 }
 
 // LedgerEntry model - Immutable double-entry accounting
 model LedgerEntry {
   id            String   @id @default(cuid())
+  brokerId      String?  @map("broker_id")
   entryId       String   @unique @map("entry_id")
   accountId     String   @map("account_id")
   type          LedgerType
@@ -92,8 +133,10 @@ model LedgerEntry {
   metadata      Json?
   createdAt     DateTime @default(now()) @map("created_at")
 
+  broker        Broker?  @relation(fields: [brokerId], references: [id])
   account       Account  @relation(fields: [accountId], references: [id])
 
+  @@index([brokerId])
   @@index([accountId, createdAt])
   @@map("ledger_entries")
 }
@@ -101,6 +144,7 @@ model LedgerEntry {
 // Deposit model - Track incoming funds
 model Deposit {
   id             String        @id @default(cuid())
+  brokerId       String?       @map("broker_id")
   clientId       String        @map("client_id")
   amount         Decimal       @db.Decimal(18, 2)
   currency       String        @default("USD")
@@ -114,14 +158,17 @@ model Deposit {
   createdAt      DateTime      @default(now()) @map("created_at")
   updatedAt      DateTime      @updatedAt @map("updated_at")
 
+  broker         Broker?       @relation(fields: [brokerId], references: [id])
   client         Client        @relation(fields: [clientId], references: [id])
 
+  @@index([brokerId])
   @@map("deposits")
 }
 
 // Withdrawal model - Track outgoing funds
 model Withdrawal {
   id             String        @id @default(cuid())
+  brokerId       String?       @map("broker_id")
   clientId       String        @map("client_id")
   amount         Decimal       @db.Decimal(18, 2)
   currency       String        @default("USD")
@@ -134,14 +181,17 @@ model Withdrawal {
   createdAt      DateTime      @default(now()) @map("created_at")
   updatedAt      DateTime      @updatedAt @map("updated_at")
 
+  broker         Broker?       @relation(fields: [brokerId], references: [id])
   client         Client        @relation(fields: [clientId], references: [id])
 
+  @@index([brokerId])
   @@map("withdrawals")
 }
 
 // Trade model - Synced from MT4/MT5
 model Trade {
   id          String   @id @default(cuid())
+  brokerId    String?  @map("broker_id")
   tradeId     String   @unique @map("trade_id") // MT4/MT5 trade ID
   accountId   String   @map("account_id")
   symbol      String
@@ -154,8 +204,10 @@ model Trade {
   openTime    DateTime @map("open_time")
   closeTime   DateTime? @map("close_time")
 
+  broker      Broker?  @relation(fields: [brokerId], references: [id])
   account     Account  @relation(fields: [accountId], references: [id])
 
+  @@index([brokerId])
   @@index([accountId, openTime])
   @@map("trades")
 }
@@ -163,6 +215,7 @@ model Trade {
 // IntroducingBroker model - IB partners who refer clients
 model IntroducingBroker {
   id              String   @id @default(cuid())
+  brokerId        String?  @map("broker_id")
   ibId            String   @unique @map("ib_id") // IB-10001, IB-10002, etc.
   name            String
   email           String   @unique
@@ -174,23 +227,31 @@ model IntroducingBroker {
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
+  broker          Broker?  @relation(fields: [brokerId], references: [id])
+
+  @@index([brokerId])
   @@map("introducing_brokers")
 }
 
 // IbRelation model - Affiliate hierarchies
 model IbRelation {
   id              String   @id @default(cuid())
+  brokerId        String?  @map("broker_id")
   ibId            String   @map("ib_id")
   clientId        String   @map("client_id")
   commissionRules Json     @map("commission_rules")
   createdAt       DateTime @default(now()) @map("created_at")
 
+  broker          Broker?  @relation(fields: [brokerId], references: [id])
+
+  @@index([brokerId])
   @@map("ib_relations")
 }
 
 // Commission model - Track and settle IB payouts
 model Commission {
   id          String          @id @default(cuid())
+  brokerId    String?         @map("broker_id")
   ibId        String          @map("ib_id")
   source      String          // Trade ID or reference
   amount      Decimal         @db.Decimal(18, 2)
@@ -199,6 +260,9 @@ model Commission {
   paidAt      DateTime?       @map("paid_at")
   createdAt   DateTime        @default(now()) @map("created_at")
 
+  broker      Broker?         @relation(fields: [brokerId], references: [id])
+
+  @@index([brokerId])
   @@index([ibId, paidStatus])
   @@map("commissions")
 }
@@ -206,6 +270,7 @@ model Commission {
 // CommissionPayout model - Monthly IB commission payouts
 model CommissionPayout {
   id        String          @id @default(cuid())
+  brokerId  String?         @map("broker_id")
   ibId      String          @map("ib_id")
   period    String          // "November 2024", "December 2024"
   amount    Decimal         @db.Decimal(18, 2)
@@ -213,6 +278,9 @@ model CommissionPayout {
   paidAt    DateTime?       @map("paid_at")
   createdAt DateTime        @default(now()) @map("created_at")
 
+  broker    Broker?         @relation(fields: [brokerId], references: [id])
+
+  @@index([brokerId])
   @@index([ibId, period])
   @@map("commission_payouts")
 }
@@ -220,12 +288,16 @@ model CommissionPayout {
 // Audit model - Log all admin changes
 model Audit {
   id        String   @id @default(cuid())
+  brokerId  String?  @map("broker_id")
   actor     String   // User ID who performed the action
   action    String   // Action type
   target    String   // What was changed
   payload   Json?    // Details of the change
   timestamp DateTime @default(now())
 
+  broker    Broker?  @relation(fields: [brokerId], references: [id])
+
+  @@index([brokerId])
   @@index([actor, timestamp])
   @@map("audits")
 }
@@ -246,6 +318,7 @@ model Session {
 // SystemSetting model - Application configuration settings
 model SystemSetting {
   id          String   @id @default(cuid())
+  brokerId    String?  @map("broker_id")
   category    String   // General, Trading, Financial, Security, Compliance, Notifications, Integrations
   key         String   @unique
   value       String   // Stored as JSON string for flexibility
@@ -256,6 +329,9 @@ model SystemSetting {
   updatedAt   DateTime @updatedAt @map("updated_at")
   createdAt   DateTime @default(now()) @map("created_at")
 
+  broker      Broker?  @relation(fields: [brokerId], references: [id])
+
+  @@index([brokerId])
   @@index([category])
   @@map("system_settings")
 }
@@ -263,6 +339,7 @@ model SystemSetting {
 // KYCDocument model - KYC document uploads
 model KYCDocument {
   id              String          @id @default(cuid())
+  brokerId        String?         @map("broker_id")
   clientId        String          @map("client_id")
   documentType    DocumentType    @map("document_type")
   fileUrl         String          @map("file_url")
@@ -276,8 +353,10 @@ model KYCDocument {
   createdAt       DateTime        @default(now()) @map("created_at")
   updatedAt       DateTime        @updatedAt @map("updated_at")
 
+  broker          Broker?         @relation(fields: [brokerId], references: [id])
   client          Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
+  @@index([brokerId])
   @@index([clientId])
   @@map("kyc_documents")
 }
@@ -380,9 +459,16 @@ enum IBStatus {
   INACTIVE
 }
 
+enum BrokerStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
 // BankAccount model - Client bank account details for transfers
 model BankAccount {
   id              String   @id @default(cuid())
+  brokerId        String?  @map("broker_id")
   clientId        String   @map("client_id")
   bankName        String   @map("bank_name")
   accountHolderName String @map("account_holder_name")
@@ -397,8 +483,10 @@ model BankAccount {
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
+  broker          Broker?  @relation(fields: [brokerId], references: [id])
   client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
+  @@index([brokerId])
   @@index([clientId])
   @@map("bank_accounts")
 }
@@ -426,6 +514,7 @@ model ForexPrice {
 // Role model - User roles with permissions
 model Role {
   id          String   @id @default(cuid())
+  brokerId    String?  @map("broker_id")
   name        String   @unique // Admin, Support Agent, Compliance Officer, etc.
   description String?
   permissions String[] // Array of permission strings: clients.view, deposits.approve, etc.
@@ -433,5 +522,8 @@ model Role {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
+  broker      Broker?  @relation(fields: [brokerId], references: [id])
+
+  @@index([brokerId])
   @@map("roles")
 }

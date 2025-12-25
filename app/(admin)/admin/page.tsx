@@ -1,12 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/context/AuthContext";
 import { KPICard } from "@/components/dashboard/KPICard";
 import { LineChart } from "@/components/charts/LineChart";
 import { BarChart } from "@/components/charts/BarChart";
-import { FaUsers, FaArrowDown, FaMoneyBillWave, FaDollarSign, FaExclamationTriangle } from "react-icons/fa";
+import { FaUsers, FaArrowDown, FaMoneyBillWave, FaDollarSign, FaExclamationTriangle, FaSignOutAlt, FaUserCircle } from "react-icons/fa";
 
 export default function AdminDashboardPage() {
+  const router = useRouter();
+  const { user } = useAuth();
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -14,9 +18,19 @@ export default function AdminDashboardPage() {
     fetchDashboardData();
   }, []);
 
+  const handleLogout = () => {
+    localStorage.removeItem("fizmo_token");
+    router.push("/admin-login");
+  };
+
   async function fetchDashboardData() {
     try {
-      const response = await fetch("/api/admin/dashboard");
+      const token = localStorage.getItem("fizmo_token");
+      const response = await fetch("/api/admin/dashboard", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
       if (response.ok) {
         const data = await response.json();
         setDashboardData(data);
@@ -57,19 +71,28 @@ export default function AdminDashboardPage() {
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-white mb-2">Admin Back Office</h1>
+          <div className="flex items-center gap-3 mb-2">
+            <h1 className="text-2xl lg:text-3xl font-bold text-white">Admin Back Office</h1>
+            {dashboardData?.broker && (
+              <span className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-sm font-semibold border border-blue-500/30">
+                {dashboardData.broker.name}
+              </span>
+            )}
+          </div>
           <p className="text-gray-400 text-sm lg:text-base">Broker management and monitoring dashboard</p>
         </div>
-        <div className="flex items-center space-x-2 lg:space-x-3">
-          <button className="px-3 lg:px-4 py-2 bg-fizmo-dark-800 text-white rounded-lg hover:bg-fizmo-dark-700 transition-all text-sm lg:text-base">
-            Login
+        <div className="flex items-center space-x-3 lg:space-x-4">
+          <div className="flex items-center space-x-2 px-3 py-2 bg-fizmo-dark-800 rounded-lg">
+            <FaUserCircle className="text-blue-400 text-xl" />
+            <span className="text-white text-sm">{user?.email}</span>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="px-3 lg:px-4 py-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-all flex items-center space-x-2 text-sm lg:text-base"
+          >
+            <FaSignOutAlt />
+            <span>Logout</span>
           </button>
-          <button className="px-3 lg:px-4 py-2 bg-gradient-fizmo text-white rounded-lg hover:opacity-90 transition-all text-sm lg:text-base">
-            Register
-          </button>
-          <select className="bg-fizmo-dark-800 border border-fizmo-purple-500/30 rounded px-2 lg:px-3 py-2 text-white text-sm lg:text-base">
-            <option>EN</option>
-          </select>
         </div>
       </div>
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { verifyAuth } from "@/lib/auth";
+import { verifyAuth, getBrokerIdFromToken } from "@/lib/auth";
 
 // GET - Fetch all deposits (Admin only)
 export async function GET(request: NextRequest) {
@@ -10,8 +10,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get all deposits with account and client info
+    // Get brokerId from JWT token
+    const brokerId = await getBrokerIdFromToken(request);
+    if (!brokerId) {
+      return NextResponse.json({ error: "Broker context not found" }, { status: 400 });
+    }
+
+    // Get all deposits within this broker
     const deposits = await prisma.deposit.findMany({
+      where: {
+        brokerId,
+      },
       include: {
         account: {
           include: {
@@ -52,6 +61,12 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Get brokerId from JWT token
+    const brokerId = await getBrokerIdFromToken(request);
+    if (!brokerId) {
+      return NextResponse.json({ error: "Broker context not found" }, { status: 400 });
+    }
+
     const body = await request.json();
     const { depositId, status } = body;
 
@@ -66,9 +81,12 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Invalid status" }, { status: 400 });
     }
 
-    // Get the deposit with account info
-    const deposit = await prisma.deposit.findUnique({
-      where: { id: depositId },
+    // Get the deposit with account info (verify it belongs to this broker)
+    const deposit = await prisma.deposit.findFirst({
+      where: {
+        id: depositId,
+        brokerId,
+      },
       include: { account: true },
     });
 

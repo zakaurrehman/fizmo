@@ -8,6 +8,7 @@ export interface JWTPayload {
   userId: string;
   email: string;
   role: string;
+  brokerId: string;
 }
 
 /**
@@ -33,6 +34,7 @@ export async function verifyToken(token: string): Promise<JWTPayload | null> {
       userId: payload.userId as string,
       email: payload.email as string,
       role: payload.role as string,
+      brokerId: payload.brokerId as string,
     };
   } catch (error) {
     return null;

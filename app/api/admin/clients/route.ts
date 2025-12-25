@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { verifyAuth } from "@/lib/auth";
+import { verifyAuth, getBrokerIdFromToken } from "@/lib/auth";
 
 // GET - Fetch all clients (Admin only)
 export async function GET(request: NextRequest) {
@@ -10,11 +10,20 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Get brokerId from JWT token
+    const brokerId = await getBrokerIdFromToken(request);
+    if (!brokerId) {
+      return NextResponse.json({ error: "Broker context not found" }, { status: 400 });
+    }
+
     // TODO: Add admin role check here
     // For now, allow all authenticated users
 
-    // Get all clients with their user info and accounts
+    // Get all clients within this broker
     const clients = await prisma.client.findMany({
+      where: {
+        brokerId,
+      },
       include: {
         user: {
           select: {

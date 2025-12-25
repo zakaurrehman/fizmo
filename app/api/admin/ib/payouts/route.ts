@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { verifyAuth } from "@/lib/auth";
+import { verifyAuth, getBrokerIdFromToken } from "@/lib/auth";
 
 // GET - Fetch all commission payouts
 export async function GET(request: NextRequest) {
@@ -10,7 +10,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const brokerId = await getBrokerIdFromToken(request);
+    if (!brokerId) {
+      return NextResponse.json({ error: "Broker context not found" }, { status: 400 });
+    }
+
     const payouts = await prisma.commissionPayout.findMany({
+      where: { brokerId },
       orderBy: { createdAt: "desc" },
     });
 
@@ -53,6 +59,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const brokerId = await getBrokerIdFromToken(request);
+    if (!brokerId) {
+      return NextResponse.json({ error: "Broker context not found" }, { status: 400 });
+    }
+
     const { ibId, period, amount } = await request.json();
 
     if (!ibId || !period || !amount) {
@@ -62,9 +73,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check for duplicate
+    // Check for duplicate within this broker
     const existing = await prisma.commissionPayout.findFirst({
       where: {
+        brokerId,
         ibId,
         period,
       },
@@ -79,6 +91,7 @@ export async function POST(request: NextRequest) {
 
     const payout = await prisma.commissionPayout.create({
       data: {
+        brokerId,
         ibId,
         period,
         amount,
@@ -108,6 +121,11 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const brokerId = await getBrokerIdFromToken(request);
+    if (!brokerId) {
+      return NextResponse.json({ error: "Broker context not found" }, { status: 400 });
+    }
+
     const { id } = await request.json();
 
     if (!id) {
@@ -117,8 +135,8 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const existing = await prisma.commissionPayout.findUnique({
-      where: { id },
+    const existing = await prisma.commissionPayout.findFirst({
+      where: { id, brokerId },
     });
 
     if (!existing) {
@@ -140,9 +158,9 @@ export async function PUT(request: NextRequest) {
       },
     });
 
-    // Update IB's lastPayout date
+    // Update IB's lastPayout date (scoped to broker)
     await prisma.introducingBroker.updateMany({
-      where: { ibId: existing.ibId },
+      where: { ibId: existing.ibId, brokerId },
       data: {
         lastPayout: new Date(),
       },

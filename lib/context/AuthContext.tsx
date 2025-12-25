@@ -93,6 +93,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const authData: AuthResponse = data.data;
+
+    // Validate role - CLIENT only for this login page
+    // Admins should use /admin/login, Super admins should use /super-admin/login
+    if (authData.user.role === "ADMIN" || authData.user.role === "SUPER_ADMIN") {
+      throw new Error("Please use the admin login page");
+    }
+
     setToken(authData.token);
     setUser(authData.user as User);
     localStorage.setItem("fizmo_token", authData.token);

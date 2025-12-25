@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { verifyAuth } from "@/lib/auth";
+import { verifyAuth, getBrokerIdFromToken } from "@/lib/auth";
 
 // GET - Fetch all IBs with calculated stats
 export async function GET(request: NextRequest) {
@@ -10,7 +10,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const brokerId = await getBrokerIdFromToken(request);
+    if (!brokerId) {
+      return NextResponse.json({ error: "Broker context not found" }, { status: 400 });
+    }
+
     const ibs = await prisma.introducingBroker.findMany({
+      where: { brokerId },
       orderBy: { joinDate: "desc" },
     });
 
@@ -114,6 +120,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const brokerId = await getBrokerIdFromToken(request);
+    if (!brokerId) {
+      return NextResponse.json({ error: "Broker context not found" }, { status: 400 });
+    }
+
     const { name, email, tier, commissionRate } = await request.json();
 
     // Validate input
@@ -124,9 +135,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check for duplicate email
-    const existing = await prisma.introducingBroker.findUnique({
-      where: { email },
+    // Check for duplicate email within this broker
+    const existing = await prisma.introducingBroker.findFirst({
+      where: { email, brokerId },
     });
 
     if (existing) {
@@ -136,8 +147,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate IB ID
+    // Generate IB ID (scoped to this broker)
     const lastIb = await prisma.introducingBroker.findFirst({
+      where: { brokerId },
       orderBy: { ibId: "desc" },
     });
 
@@ -162,6 +174,7 @@ export async function POST(request: NextRequest) {
 
     const ib = await prisma.introducingBroker.create({
       data: {
+        brokerId,
         ibId,
         name,
         email,
@@ -200,6 +213,11 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const brokerId = await getBrokerIdFromToken(request);
+    if (!brokerId) {
+      return NextResponse.json({ error: "Broker context not found" }, { status: 400 });
+    }
+
     const { id, name, email, tier, commissionRate, status } =
       await request.json();
 
@@ -210,18 +228,18 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const existing = await prisma.introducingBroker.findUnique({
-      where: { id },
+    const existing = await prisma.introducingBroker.findFirst({
+      where: { id, brokerId },
     });
 
     if (!existing) {
       return NextResponse.json({ error: "IB not found" }, { status: 404 });
     }
 
-    // Check for email conflict
+    // Check for email conflict within this broker
     if (email && email !== existing.email) {
-      const duplicate = await prisma.introducingBroker.findUnique({
-        where: { email },
+      const duplicate = await prisma.introducingBroker.findFirst({
+        where: { email, brokerId },
       });
 
       if (duplicate) {
@@ -265,6 +283,11 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const brokerId = await getBrokerIdFromToken(request);
+    if (!brokerId) {
+      return NextResponse.json({ error: "Broker context not found" }, { status: 400 });
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 
@@ -275,8 +298,8 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const existing = await prisma.introducingBroker.findUnique({
-      where: { id },
+    const existing = await prisma.introducingBroker.findFirst({
+      where: { id, brokerId },
     });
 
     if (!existing) {

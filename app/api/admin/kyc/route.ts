@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { verifyAuth } from "@/lib/auth";
+import { verifyAuth, getBrokerIdFromToken } from "@/lib/auth";
 
 /**
  * GET /api/admin/kyc
@@ -18,13 +18,20 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    const brokerId = await getBrokerIdFromToken(request);
+    if (!brokerId) {
+      return NextResponse.json({ error: "Broker context not found" }, { status: 400 });
+    }
+
     // Get query params for filtering
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
     const clientId = searchParams.get("clientId");
 
     // Build where clause
-    const where: any = {};
+    const where: any = {
+      brokerId,
+    };
     if (status) {
       where.status = status;
     }
@@ -32,7 +39,7 @@ export async function GET(request: NextRequest) {
       where.clientId = clientId;
     }
 
-    // Get all KYC documents with client info
+    // Get all KYC documents within this broker
     const documents = await prisma.kYCDocument.findMany({
       where,
       include: {
@@ -113,6 +120,11 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    const brokerId = await getBrokerIdFromToken(request);
+    if (!brokerId) {
+      return NextResponse.json({ error: "Broker context not found" }, { status: 400 });
+    }
+
     const body = await request.json();
     const { documentId, status, rejectionReason } = body;
 
@@ -138,9 +150,12 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Get document
-    const document = await prisma.kYCDocument.findUnique({
-      where: { id: documentId },
+    // Get document (verify it belongs to this broker)
+    const document = await prisma.kYCDocument.findFirst({
+      where: {
+        id: documentId,
+        brokerId,
+      },
       include: {
         client: {
           include: {
@@ -217,6 +232,7 @@ export async function PUT(request: NextRequest) {
     // Create audit log
     await prisma.audit.create({
       data: {
+        brokerId,
         actor: user.id,
         action: "KYC_DOCUMENT_REVIEW",
         target: documentId,

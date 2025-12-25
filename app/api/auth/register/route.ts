@@ -3,11 +3,16 @@ import { prisma } from "@/lib/prisma";
 import { hashPassword, validatePassword } from "@/lib/auth/password";
 import { createSession } from "@/lib/auth/session";
 import { sendVerificationEmail } from "@/lib/email";
+import { ensureDefaultBroker, requireBrokerId } from "@/lib/broker";
 import type { RegisterRequest, ApiResponse, AuthResponse } from "@/types/api";
 import crypto from "crypto";
 
 export async function POST(request: NextRequest) {
   try {
+    // Ensure default broker exists and get current broker ID
+    await ensureDefaultBroker();
+    const brokerId = await requireBrokerId();
+
     const body: RegisterRequest = await request.json();
     const { email, password, confirmPassword, firstName, lastName, phone } = body;
 
@@ -45,9 +50,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email: email.toLowerCase() },
+    // Check if user already exists within this broker
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        email: email.toLowerCase(),
+        brokerId,
+      },
     });
 
     if (existingUser) {
@@ -72,6 +80,7 @@ export async function POST(request: NextRequest) {
     // Create user and client in a transaction
     const user = await prisma.user.create({
       data: {
+        brokerId,
         email: email.toLowerCase(),
         passwordHash,
         role: "CLIENT",
@@ -79,6 +88,7 @@ export async function POST(request: NextRequest) {
         emailVerified: false,
         client: {
           create: {
+            brokerId,
             clientId,
             firstName,
             lastName,
@@ -98,7 +108,7 @@ export async function POST(request: NextRequest) {
     console.log(`Verification email sent to: ${user.email}`);
 
     // Create session
-    const token = await createSession(user.id, user.email, user.role);
+    const token = await createSession(user.id, user.email, user.role, brokerId);
 
     // Return success response
     return NextResponse.json<ApiResponse<AuthResponse>>(

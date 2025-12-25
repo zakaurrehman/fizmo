@@ -29,6 +29,27 @@ export async function verifyAuth(request: NextRequest) {
   }
 }
 
+/**
+ * Get brokerId from JWT token
+ * Returns brokerId if token is valid, null otherwise
+ */
+export async function getBrokerIdFromToken(request: NextRequest): Promise<string | null> {
+  try {
+    const authHeader = request.headers.get("authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return null;
+    }
+
+    const token = authHeader.substring(7);
+    const payload = await verifyToken(token);
+
+    return payload?.brokerId || null;
+  } catch (error) {
+    console.error("Failed to get brokerId from token:", error);
+    return null;
+  }
+}
+
 // Re-export other auth functions for convenience
 export { createSession, deleteSession, validateSession, deleteAllUserSessions } from "./session";
 export { createToken, verifyToken } from "./jwt";

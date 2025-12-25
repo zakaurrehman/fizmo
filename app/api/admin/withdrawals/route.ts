@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { verifyAuth } from "@/lib/auth";
+import { verifyAuth, getBrokerIdFromToken } from "@/lib/auth";
 
 // GET - Fetch all withdrawals (Admin only)
 export async function GET(request: NextRequest) {
@@ -10,8 +10,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get all withdrawals with account and client info
+    const brokerId = await getBrokerIdFromToken(request);
+    if (!brokerId) {
+      return NextResponse.json({ error: "Broker context not found" }, { status: 400 });
+    }
+
+    // Get all withdrawals within this broker
     const withdrawals = await prisma.withdrawal.findMany({
+      where: {
+        brokerId,
+      },
       include: {
         account: {
           include: {
@@ -52,6 +60,11 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const brokerId = await getBrokerIdFromToken(request);
+    if (!brokerId) {
+      return NextResponse.json({ error: "Broker context not found" }, { status: 400 });
+    }
+
     const body = await request.json();
     const { withdrawalId, status } = body;
 
@@ -66,9 +79,12 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Invalid status" }, { status: 400 });
     }
 
-    // Get the withdrawal with account info
-    const withdrawal = await prisma.withdrawal.findUnique({
-      where: { id: withdrawalId },
+    // Get the withdrawal with account info (verify it belongs to this broker)
+    const withdrawal = await prisma.withdrawal.findFirst({
+      where: {
+        id: withdrawalId,
+        brokerId,
+      },
       include: { account: true },
     });
 

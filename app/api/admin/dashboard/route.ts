@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { verifyAuth } from "@/lib/auth";
+import { verifyAuth, getBrokerIdFromToken } from "@/lib/auth";
 
 // GET - Fetch admin dashboard statistics
 export async function GET(request: NextRequest) {
@@ -10,24 +10,42 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const brokerId = await getBrokerIdFromToken(request);
+    if (!brokerId) {
+      return NextResponse.json({ error: "Broker context not found" }, { status: 400 });
+    }
+
+    // Get broker information
+    const broker = await prisma.broker.findUnique({
+      where: { id: brokerId },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        domain: true,
+      },
+    });
+
     // TODO: Add admin role check here
 
-    // Get total clients count
-    const totalClients = await prisma.client.count();
+    // Get total clients count within this broker
+    const totalClients = await prisma.client.count({ where: { brokerId } });
 
-    // Get total deposits in last 24h
+    // Get total deposits in last 24h within this broker
     const last24h = new Date(Date.now() - 86400000);
     const depositsLast24h = await prisma.deposit.findMany({
       where: {
+        brokerId,
         createdAt: { gte: last24h },
         status: "COMPLETED",
       },
     });
     const totalDeposits = depositsLast24h.reduce((sum, d) => sum + d.amount, 0);
 
-    // Get total withdrawals in last 24h
+    // Get total withdrawals in last 24h within this broker
     const withdrawalsLast24h = await prisma.withdrawal.findMany({
       where: {
+        brokerId,
         createdAt: { gte: last24h },
         status: "COMPLETED",
       },
@@ -37,9 +55,10 @@ export async function GET(request: NextRequest) {
     // Calculate net revenue (deposits - withdrawals)
     const netRevenue = totalDeposits - totalWithdrawals;
 
-    // Get active traders (clients with at least one account)
+    // Get active traders (clients with at least one account) within this broker
     const activeTraders = await prisma.client.count({
       where: {
+        brokerId,
         accounts: {
           some: {
             status: "ACTIVE",
@@ -48,45 +67,41 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Get pending alerts count
+    // Get pending alerts count within this broker
     const pendingDeposits = await prisma.deposit.count({
-      where: { status: "PENDING" },
+      where: { brokerId, status: "PENDING" },
     });
     const pendingWithdrawals = await prisma.withdrawal.count({
-      where: { status: "PENDING" },
+      where: { brokerId, status: "PENDING" },
     });
     const pendingAlerts = pendingDeposits + pendingWithdrawals;
 
-    // Get recent activity (last 10 transactions - deposits + withdrawals)
+    // Get recent activity (last 10 transactions - deposits + withdrawals) within this broker
     const recentDeposits = await prisma.deposit.findMany({
+      where: { brokerId },
       take: 5,
       orderBy: { createdAt: "desc" },
       include: {
-        account: {
-          include: {
-            client: {
-              select: {
-                firstName: true,
-                lastName: true,
-              },
-            },
+        client: {
+          select: {
+            clientId: true,
+            firstName: true,
+            lastName: true,
           },
         },
       },
     });
 
     const recentWithdrawals = await prisma.withdrawal.findMany({
+      where: { brokerId },
       take: 5,
       orderBy: { createdAt: "desc" },
       include: {
-        account: {
-          include: {
-            client: {
-              select: {
-                firstName: true,
-                lastName: true,
-              },
-            },
+        client: {
+          select: {
+            clientId: true,
+            firstName: true,
+            lastName: true,
           },
         },
       },
@@ -97,8 +112,8 @@ export async function GET(request: NextRequest) {
       ...recentDeposits.map((d) => ({
         id: d.id,
         type: "Deposit",
-        clientName: `${d.account.client.firstName} ${d.account.client.lastName}`,
-        accountId: d.account.accountId,
+        clientName: `${d.client.firstName} ${d.client.lastName}`,
+        accountId: d.client.clientId,
         amount: d.amount,
         status: d.status,
         createdAt: d.createdAt,
@@ -106,8 +121,8 @@ export async function GET(request: NextRequest) {
       ...recentWithdrawals.map((w) => ({
         id: w.id,
         type: "Withdrawal",
-        clientName: `${w.account.client.firstName} ${w.account.client.lastName}`,
-        accountId: w.account.accountId,
+        clientName: `${w.client.firstName} ${w.client.lastName}`,
+        accountId: w.client.clientId,
         amount: w.amount,
         status: w.status,
         createdAt: w.createdAt,
@@ -122,6 +137,7 @@ export async function GET(request: NextRequest) {
 
     const monthlyDeposits = await prisma.deposit.findMany({
       where: {
+        brokerId,
         createdAt: { gte: last6Months },
         status: "COMPLETED",
       },
@@ -129,6 +145,7 @@ export async function GET(request: NextRequest) {
 
     const monthlyWithdrawals = await prisma.withdrawal.findMany({
       where: {
+        brokerId,
         createdAt: { gte: last6Months },
         status: "COMPLETED",
       },
@@ -170,6 +187,7 @@ export async function GET(request: NextRequest) {
 
       const clientsInMonth = await prisma.client.count({
         where: {
+          brokerId,
           createdAt: {
             gte: monthStart,
             lte: monthEnd,
@@ -184,6 +202,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({
+      broker,
       kpis: {
         totalClients,
         totalDeposits,
