@@ -9,9 +9,17 @@ import crypto from "crypto";
 
 export async function POST(request: NextRequest) {
   try {
-    // Ensure default broker exists and get current broker ID
-    await ensureDefaultBroker();
-    const brokerId = await requireBrokerId();
+    // Ensure default broker exists
+    const defaultBroker = await ensureDefaultBroker();
+
+    // Try to get broker from headers, fallback to default broker
+    let brokerId: string;
+    try {
+      brokerId = await requireBrokerId();
+    } catch (error) {
+      console.log("No broker found in headers, using default broker");
+      brokerId = defaultBroker.id;
+    }
 
     const body: RegisterRequest = await request.json();
     const { email, password, confirmPassword, firstName, lastName, phone } = body;
@@ -127,12 +135,15 @@ export async function POST(request: NextRequest) {
       },
       { status: 201 }
     );
-  } catch (error) {
+  } catch (error: any) {
     console.error("Registration error:", error);
+    console.error("Error stack:", error?.stack);
+    console.error("Error message:", error?.message);
     return NextResponse.json<ApiResponse>(
       {
         success: false,
         error: "Internal server error",
+        details: process.env.NODE_ENV === "development" ? error?.message : undefined,
       },
       { status: 500 }
     );
