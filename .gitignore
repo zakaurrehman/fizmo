@@ -42,3 +42,7 @@ prisma/migrations
 .idea
 
 /lib/generated/prisma
+
+# Documentation (except README.md)
+*.md
+!README.md
