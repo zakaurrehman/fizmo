@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth, getBrokerIdFromToken } from "@/lib/auth";
+import { notifyWithdrawal } from "@/lib/notifications";
 
 // GET - Fetch all withdrawals (Admin only)
 export async function GET(request: NextRequest) {
@@ -21,17 +22,13 @@ export async function GET(request: NextRequest) {
         brokerId,
       },
       include: {
-        account: {
-          include: {
-            client: {
+        client: {
+          select: {
+            firstName: true,
+            lastName: true,
+            user: {
               select: {
-                firstName: true,
-                lastName: true,
-                user: {
-                  select: {
-                    email: true,
-                  },
-                },
+                email: true,
               },
             },
           },
@@ -79,13 +76,23 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Invalid status" }, { status: 400 });
     }
 
-    // Get the withdrawal with account info (verify it belongs to this broker)
+    // Get the withdrawal with client info (verify it belongs to this broker)
     const withdrawal = await prisma.withdrawal.findFirst({
       where: {
         id: withdrawalId,
         brokerId,
       },
-      include: { account: true },
+      include: {
+        client: {
+          include: {
+            user: true,
+            accounts: {
+              where: { status: "ACTIVE" },
+              take: 1,
+            },
+          },
+        },
+      },
     });
 
     if (!withdrawal) {
@@ -108,16 +115,25 @@ export async function PATCH(request: NextRequest) {
       data: { status },
     });
 
-    // If rejected, return funds to account balance
-    if (status === "REJECTED") {
+    // If rejected, return funds to first active account balance
+    if (status === "REJECTED" && withdrawal.client.accounts.length > 0) {
+      const account = withdrawal.client.accounts[0];
       await prisma.account.update({
-        where: { id: withdrawal.accountId },
+        where: { id: account.id },
         data: {
           balance: { increment: withdrawal.amount },
           equity: { increment: withdrawal.amount },
         },
       });
     }
+
+    // Send notification to user
+    await notifyWithdrawal(
+      withdrawal.client.user.id,
+      Number(withdrawal.amount),
+      status,
+      withdrawal.id
+    );
 
     return NextResponse.json({ withdrawal: updatedWithdrawal });
   } catch (error: any) {

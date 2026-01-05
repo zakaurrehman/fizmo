@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth, getBrokerIdFromToken } from "@/lib/auth";
+import { notifyDeposit } from "@/lib/notifications";
 
 // GET - Fetch all deposits (Admin only)
 export async function GET(request: NextRequest) {
@@ -22,17 +23,13 @@ export async function GET(request: NextRequest) {
         brokerId,
       },
       include: {
-        account: {
-          include: {
-            client: {
+        client: {
+          select: {
+            firstName: true,
+            lastName: true,
+            user: {
               select: {
-                firstName: true,
-                lastName: true,
-                user: {
-                  select: {
-                    email: true,
-                  },
-                },
+                email: true,
               },
             },
           },
@@ -81,13 +78,23 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Invalid status" }, { status: 400 });
     }
 
-    // Get the deposit with account info (verify it belongs to this broker)
+    // Get the deposit with client info (verify it belongs to this broker)
     const deposit = await prisma.deposit.findFirst({
       where: {
         id: depositId,
         brokerId,
       },
-      include: { account: true },
+      include: {
+        client: {
+          include: {
+            user: true,
+            accounts: {
+              where: { status: "ACTIVE" },
+              take: 1,
+            },
+          },
+        },
+      },
     });
 
     if (!deposit) {
@@ -107,16 +114,25 @@ export async function PATCH(request: NextRequest) {
       data: { status },
     });
 
-    // If approved, update account balance
-    if (status === "COMPLETED") {
+    // If approved, update first active account balance
+    if (status === "COMPLETED" && deposit.client.accounts.length > 0) {
+      const account = deposit.client.accounts[0];
       await prisma.account.update({
-        where: { id: deposit.accountId },
+        where: { id: account.id },
         data: {
           balance: { increment: deposit.amount },
           equity: { increment: deposit.amount },
         },
       });
     }
+
+    // Send notification to user
+    await notifyDeposit(
+      deposit.client.user.id,
+      Number(deposit.amount),
+      status,
+      deposit.id
+    );
 
     return NextResponse.json({ deposit: updatedDeposit });
   } catch (error: any) {

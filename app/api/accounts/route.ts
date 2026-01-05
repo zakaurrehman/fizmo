@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth";
+import { notifyAccountCreated } from "@/lib/notifications";
 
 // GET - Fetch all accounts for the logged-in user
 export async function GET(request: NextRequest) {
@@ -80,6 +81,9 @@ export async function POST(request: NextRequest) {
         status: "ACTIVE",
       },
     });
+
+    // Send notification
+    await notifyAccountCreated(user.id, accountId, accountType);
 
     return NextResponse.json({ account }, { status: 201 });
   } catch (error: any) {
