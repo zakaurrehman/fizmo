@@ -33,7 +33,7 @@ export function Logo({
     <div className={`flex items-center gap-3 ${className}`}>
       <div className={`${bgStyles[variant]} inline-flex items-center justify-center transition-all hover:scale-105`}>
         <Image
-          src="/assets/FIZMO LOGO.svg"
+          src="/assets/bg.png"
           alt="Fizmo Logo"
           width={width}
           height={height}
