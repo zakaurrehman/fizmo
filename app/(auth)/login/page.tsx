@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useAuth } from "@/lib/context/AuthContext";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { Logo } from "@/components/ui/Logo";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -48,11 +49,7 @@ export default function LoginPage() {
         <div className="auth-card p-12 animate-fade-in-up smooth-transition hover-lift" style={{animationDelay: '0.2s'}}>
           {/* Logo */}
           <div className="text-center mb-10">
-            <Link href="/" className="inline-block">
-              <h1 className="text-3xl font-bold gradient-text hover-scale smooth-transition">
-                Fizmo
-              </h1>
-            </Link>
+            <Logo href="/" width={150} height={50} />
           </div>
 
           {error && (

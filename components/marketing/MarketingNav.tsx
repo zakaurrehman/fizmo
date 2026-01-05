@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import { Menu, X } from "lucide-react";
+import { Logo } from "@/components/ui/Logo";
 
 export default function MarketingNav() {
   const pathname = usePathname();
@@ -38,14 +39,7 @@ export default function MarketingNav() {
       <div className="container mx-auto px-4 lg:px-8">
         <div className="flex items-center justify-between h-20">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-lg bg-gradient-fizmo flex items-center justify-center group-hover:scale-110 transition-transform">
-              <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z"/>
-              </svg>
-            </div>
-            <span className="text-2xl font-bold gradient-text">Fizmo</span>
-          </Link>
+          <Logo href="/" width={140} height={45} className="group" />
 
           {/* Desktop Navigation */}
           <div className="hidden lg:flex items-center gap-8">

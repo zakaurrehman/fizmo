@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/context/AuthContext";
 import { IconType } from "react-icons";
 import { FaChartBar, FaUsers, FaUser, FaBriefcase, FaExchangeAlt, FaDollarSign, FaMoneyBillWave, FaExclamationTriangle, FaHandshake, FaChartLine, FaShieldAlt, FaFileAlt, FaCog } from "react-icons/fa";
+import { Logo } from "@/components/ui/Logo";
 
 interface MenuItem {
   icon: IconType;
@@ -55,11 +56,7 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
       >
         {/* Logo */}
         <div className="p-6 border-b border-fizmo-purple-500/20">
-          <Link href="/admin">
-            <h1 className="text-2xl font-bold bg-gradient-fizmo bg-clip-text text-transparent">
-              Fizmo Admin
-            </h1>
-          </Link>
+          <Logo href="/admin" width={120} height={40} showText={true} text="Admin" />
         </div>
 
         {/* Menu Items */}

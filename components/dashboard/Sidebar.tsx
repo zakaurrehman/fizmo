@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/context/AuthContext";
 import { IconType } from "react-icons";
 import { FaHome, FaBriefcase, FaDollarSign, FaMoneyBillWave, FaChartBar, FaChartLine, FaExchangeAlt, FaUser, FaBell, FaComments } from "react-icons/fa";
+import { Logo } from "@/components/ui/Logo";
 
 interface MenuItem {
   icon: IconType;
@@ -53,11 +54,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       >
         {/* Logo */}
         <div className="p-6 border-b border-fizmo-purple-500/20">
-          <Link href="/dashboard">
-            <h1 className="text-2xl font-bold bg-gradient-fizmo bg-clip-text text-transparent">
-              Fizmo
-            </h1>
-          </Link>
+          <Logo href="/dashboard" width={120} height={40} />
         </div>
 
         {/* Menu Items */}

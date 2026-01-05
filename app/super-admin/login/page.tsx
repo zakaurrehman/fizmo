@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { Logo } from "@/components/ui/Logo";
 
 export default function SuperAdminLoginPage() {
   const router = useRouter();
@@ -76,11 +77,7 @@ export default function SuperAdminLoginPage() {
         <div className="auth-card p-12 animate-fade-in-up smooth-transition hover-lift" style={{animationDelay: '0.2s'}}>
           {/* Logo */}
           <div className="text-center mb-10">
-            <Link href="/" className="inline-block">
-              <h1 className="text-3xl font-bold gradient-text hover-scale smooth-transition">
-                Fizmo
-              </h1>
-            </Link>
+            <Logo href="/" width={150} height={50} />
             <p className="text-sm text-gray-500 mt-2">Super Admin Portal</p>
           </div>
 
