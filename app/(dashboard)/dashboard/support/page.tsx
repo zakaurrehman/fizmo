@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 
@@ -8,127 +8,106 @@ export default function SupportPage() {
   const [selectedTab, setSelectedTab] = useState("tickets");
   const [selectedTicket, setSelectedTicket] = useState<string | null>(null);
   const [subject, setSubject] = useState("");
-  const [category, setCategory] = useState("general");
+  const [category, setCategory] = useState("GENERAL");
   const [priority, setPriority] = useState("MEDIUM");
   const [message, setMessage] = useState("");
+  const [replyMessage, setReplyMessage] = useState("");
+  const [tickets, setTickets] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
-  // Mock ticket data
-  const tickets = [
-    {
-      id: "TKT-10234",
-      subject: "Unable to Withdraw Funds",
-      category: "WITHDRAWAL",
-      status: "OPEN",
-      priority: "HIGH",
-      createdAt: "2024-12-21 14:30",
-      updatedAt: "2024-12-21 15:45",
-      messages: [
-        {
-          id: "1",
-          sender: "You",
-          message: "I'm unable to withdraw my funds. The withdrawal form keeps showing an error.",
-          timestamp: "2024-12-21 14:30",
-          isStaff: false,
+  useEffect(() => {
+    fetchTickets();
+  }, []);
+
+  async function fetchTickets() {
+    try {
+      const token = localStorage.getItem("fizmo_token");
+      const response = await fetch("/api/support", {
+        headers: {
+          Authorization: `Bearer ${token}`,
         },
-        {
-          id: "2",
-          sender: "Support Team",
-          message: "Thank you for contacting us. We're looking into this issue. Can you please provide the error message you're seeing?",
-          timestamp: "2024-12-21 15:45",
-          isStaff: true,
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setTickets(data.tickets || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch tickets:", error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleCreateTicket() {
+    if (!subject || !message) return;
+
+    setSubmitting(true);
+    try {
+      const token = localStorage.getItem("fizmo_token");
+      const response = await fetch("/api/support", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
-      ],
-    },
-    {
-      id: "TKT-10233",
-      subject: "Question About Leverage",
-      category: "TRADING",
-      status: "RESOLVED",
-      priority: "MEDIUM",
-      createdAt: "2024-12-20 10:15",
-      updatedAt: "2024-12-20 16:30",
-      messages: [
-        {
-          id: "1",
-          sender: "You",
-          message: "What is the maximum leverage available for my account type?",
-          timestamp: "2024-12-20 10:15",
-          isStaff: false,
+        body: JSON.stringify({
+          subject,
+          category,
+          priority,
+          message,
+        }),
+      });
+
+      if (response.ok) {
+        await fetchTickets();
+        setSubject("");
+        setMessage("");
+        setCategory("GENERAL");
+        setPriority("MEDIUM");
+        setSelectedTab("tickets");
+      } else {
+        const error = await response.json();
+        alert(`Failed to create ticket: ${error.error || "Unknown error"}`);
+      }
+    } catch (error) {
+      console.error("Failed to create ticket:", error);
+      alert("An error occurred while creating the ticket");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleSendReply(ticketId: string) {
+    if (!replyMessage) return;
+
+    try {
+      const token = localStorage.getItem("fizmo_token");
+      const response = await fetch(`/api/support/${ticketId}/messages`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
-        {
-          id: "2",
-          sender: "Support Team",
-          message: "Your current account has a maximum leverage of 1:500. You can adjust this in your account settings.",
-          timestamp: "2024-12-20 11:00",
-          isStaff: true,
-        },
-        {
-          id: "3",
-          sender: "You",
-          message: "Thank you! That's helpful.",
-          timestamp: "2024-12-20 11:30",
-          isStaff: false,
-        },
-        {
-          id: "4",
-          sender: "Support Team",
-          message: "You're welcome! Is there anything else I can help you with?",
-          timestamp: "2024-12-20 16:30",
-          isStaff: true,
-        },
-      ],
-    },
-    {
-      id: "TKT-10230",
-      subject: "KYC Document Upload Issue",
-      category: "KYC",
-      status: "IN_PROGRESS",
-      priority: "MEDIUM",
-      createdAt: "2024-12-18 09:20",
-      updatedAt: "2024-12-19 14:00",
-      messages: [
-        {
-          id: "1",
-          sender: "You",
-          message: "I've tried uploading my ID document multiple times but it keeps failing.",
-          timestamp: "2024-12-18 09:20",
-          isStaff: false,
-        },
-        {
-          id: "2",
-          sender: "Support Team",
-          message: "We're sorry to hear that. Please ensure the file is in PDF or JPG format and under 5MB. Our team is also investigating potential technical issues.",
-          timestamp: "2024-12-19 14:00",
-          isStaff: true,
-        },
-      ],
-    },
-    {
-      id: "TKT-10225",
-      subject: "Bonus Credit Query",
-      category: "ACCOUNT",
-      status: "RESOLVED",
-      priority: "LOW",
-      createdAt: "2024-12-15 16:45",
-      updatedAt: "2024-12-16 10:00",
-      messages: [
-        {
-          id: "1",
-          sender: "You",
-          message: "I deposited $500 but didn't receive the promotional bonus advertised.",
-          timestamp: "2024-12-15 16:45",
-          isStaff: false,
-        },
-        {
-          id: "2",
-          sender: "Support Team",
-          message: "The bonus has been manually credited to your account. You should see it reflected now. Thank you for your patience!",
-          timestamp: "2024-12-16 10:00",
-          isStaff: true,
-        },
-      ],
-    },
-  ];
+        body: JSON.stringify({
+          message: replyMessage,
+        }),
+      });
+
+      if (response.ok) {
+        setReplyMessage("");
+        // Refresh ticket details
+        fetchTickets();
+      } else {
+        const error = await response.json();
+        alert(`Failed to send reply: ${error.error || "Unknown error"}`);
+      }
+    } catch (error) {
+      console.error("Failed to send reply:", error);
+      alert("An error occurred while sending the reply");
+    }
+  }
+
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -178,6 +157,17 @@ export default function SupportPage() {
   };
 
   const activeTicket = selectedTicket ? tickets.find((t) => t.id === selectedTicket) : null;
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -229,6 +219,20 @@ export default function SupportPage() {
           {/* Ticket List */}
           <div className="lg:col-span-1 glassmorphic rounded-xl p-6">
             <h2 className="text-xl font-bold text-white mb-4">Your Tickets</h2>
+            {loading ? (
+              <div className="text-center text-gray-400 py-8">Loading tickets...</div>
+            ) : tickets.length === 0 ? (
+              <div className="text-center text-gray-400 py-8">
+                <p>No tickets yet.</p>
+                <Button
+                  size="sm"
+                  className="mt-4"
+                  onClick={() => setSelectedTab("new")}
+                >
+                  Create First Ticket
+                </Button>
+              </div>
+            ) : (
             <div className="space-y-3">
               {tickets.map((ticket) => (
                 <div
@@ -245,7 +249,7 @@ export default function SupportPage() {
                       <span className="text-xl">{getCategoryIcon(ticket.category)}</span>
                       <div>
                         <p className="text-white font-semibold text-sm">{ticket.subject}</p>
-                        <p className="text-gray-400 text-xs">{ticket.id}</p>
+                        <p className="text-gray-400 text-xs">{ticket.ticketId}</p>
                       </div>
                     </div>
                   </div>
@@ -257,10 +261,11 @@ export default function SupportPage() {
                       {ticket.priority}
                     </span>
                   </div>
-                  <p className="text-gray-500 text-xs mt-2">Updated: {ticket.updatedAt}</p>
+                  <p className="text-gray-500 text-xs mt-2">Updated: {formatDate(ticket.updatedAt)}</p>
                 </div>
               ))}
             </div>
+            )}
           </div>
 
           {/* Ticket Details */}
@@ -272,7 +277,7 @@ export default function SupportPage() {
                   <div className="flex items-start justify-between mb-3">
                     <div>
                       <h2 className="text-2xl font-bold text-white mb-2">{activeTicket.subject}</h2>
-                      <p className="text-gray-400 text-sm">{activeTicket.id}</p>
+                      <p className="text-gray-400 text-sm">{activeTicket.ticketId}</p>
                     </div>
                     <div className="flex space-x-2">
                       <span className={`px-3 py-1 rounded text-sm ${getStatusBadge(activeTicket.status)}`}>
@@ -285,13 +290,13 @@ export default function SupportPage() {
                   </div>
                   <div className="flex items-center space-x-4 text-sm text-gray-400">
                     <span>Category: {activeTicket.category}</span>
-                    <span>Created: {activeTicket.createdAt}</span>
+                    <span>Created: {formatDate(activeTicket.createdAt)}</span>
                   </div>
                 </div>
 
                 {/* Messages */}
                 <div className="space-y-4 max-h-96 overflow-y-auto">
-                  {activeTicket.messages.map((msg) => (
+                  {activeTicket.messages.map((msg: any) => (
                     <div
                       key={msg.id}
                       className={`p-4 rounded-lg ${
@@ -301,8 +306,10 @@ export default function SupportPage() {
                       }`}
                     >
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-white font-semibold text-sm">{msg.sender}</span>
-                        <span className="text-gray-500 text-xs">{msg.timestamp}</span>
+                        <span className="text-white font-semibold text-sm">
+                          {msg.isStaff ? "Support Team" : "You"}
+                        </span>
+                        <span className="text-gray-500 text-xs">{formatDate(msg.createdAt)}</span>
                       </div>
                       <p className="text-gray-300 text-sm">{msg.message}</p>
                     </div>
@@ -314,6 +321,8 @@ export default function SupportPage() {
                   <div className="border-t border-fizmo-purple-500/20 pt-4">
                     <textarea
                       placeholder="Type your reply..."
+                      value={replyMessage}
+                      onChange={(e) => setReplyMessage(e.target.value)}
                       className="w-full px-4 py-3 bg-fizmo-dark-800 border border-fizmo-purple-500/30 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-fizmo-purple-500 min-h-24 resize-none"
                     />
                     <div className="flex justify-between items-center mt-3">
@@ -324,7 +333,13 @@ export default function SupportPage() {
                         <Button variant="outline" size="sm">
                           Close Ticket
                         </Button>
-                        <Button size="sm">Send Reply</Button>
+                        <Button
+                          size="sm"
+                          onClick={() => handleSendReply(activeTicket.id)}
+                          disabled={!replyMessage}
+                        >
+                          Send Reply
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -367,7 +382,7 @@ export default function SupportPage() {
                 onChange={(e) => setCategory(e.target.value)}
                 className="w-full px-4 py-3 bg-fizmo-dark-800 border border-fizmo-purple-500/30 rounded-lg text-white"
               >
-                <option value="general">General Inquiry</option>
+                <option value="GENERAL">General Inquiry</option>
                 <option value="TRADING">Trading Issue</option>
                 <option value="DEPOSIT">Deposit Issue</option>
                 <option value="WITHDRAWAL">Withdrawal Issue</option>
@@ -420,10 +435,19 @@ export default function SupportPage() {
             </div>
 
             <div className="flex space-x-3">
-              <Button variant="outline" className="flex-1">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setSelectedTab("tickets")}
+              >
                 Cancel
               </Button>
-              <Button className="flex-1" disabled={!subject || !message}>
+              <Button
+                className="flex-1"
+                disabled={!subject || !message || submitting}
+                loading={submitting}
+                onClick={handleCreateTicket}
+              >
                 Submit Ticket
               </Button>
             </div>
