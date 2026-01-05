@@ -118,8 +118,8 @@ export default function RegisterPage() {
         {/* Registration Card */}
         <div className="auth-card p-12 animate-fade-in-up smooth-transition hover-lift" style={{animationDelay: '0.2s'}}>
           {/* Logo */}
-          <div className="text-center mb-10">
-            <Logo href="/" width={150} height={50} />
+          <div className="flex justify-center mb-10">
+            <Logo href="/" width={150} height={50} variant="gradient-bg" />
           </div>
 
           {error && (

@@ -81,8 +81,10 @@ export default function AdminLoginPage() {
         <div className="auth-card p-12 animate-fade-in-up smooth-transition hover-lift" style={{animationDelay: '0.2s'}}>
           {/* Logo */}
           <div className="text-center mb-10">
-            <Logo href="/" width={150} height={50} />
-            <p className="text-sm text-gray-500 mt-2">Admin Dashboard</p>
+            <div className="flex justify-center mb-3">
+              <Logo href="/" width={150} height={50} variant="gradient-bg" />
+            </div>
+            <p className="text-sm text-gray-500">Admin Dashboard</p>
           </div>
 
           {error && (
