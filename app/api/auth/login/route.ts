@@ -82,6 +82,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if 2FA is enabled
+    if (user.twoFactorEnabled) {
+      // Return 2FA required response
+      return NextResponse.json<ApiResponse>(
+        {
+          success: false,
+          error: "2FA_REQUIRED",
+          message: "Two-factor authentication is required",
+          data: {
+            userId: user.id,
+            email: user.email,
+            requires2FA: true,
+          },
+        },
+        { status: 200 } // Use 200 but with error field to indicate 2FA is needed
+      );
+    }
+
     // Create session
     const token = await createSession(user.id, user.email, user.role, brokerId);
 

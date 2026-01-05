@@ -1,12 +1,125 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { KYCUpload } from "@/components/dashboard/KYCUpload";
 
 export default function ProfilePage() {
   const [selectedTab, setSelectedTab] = useState("personal");
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+  const [showQRCode, setShowQRCode] = useState(false);
+  const [qrCodeUrl, setQrCodeUrl] = useState("");
+  const [manualEntry, setManualEntry] = useState("");
+  const [verifyToken, setVerifyToken] = useState("");
+  const [backupCodes, setBackupCodes] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    checkTwoFactorStatus();
+  }, []);
+
+  async function checkTwoFactorStatus() {
+    // This would normally fetch from an API endpoint
+    // For now, we'll check from the user's session or local state
+  }
+
+  async function handleEnable2FA() {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("fizmo_token");
+      const response = await fetch("/api/auth/2fa/setup", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setQrCodeUrl(data.qrCode);
+        setManualEntry(data.manualEntry);
+        setShowQRCode(true);
+      } else {
+        const error = await response.json();
+        alert(`Failed to setup 2FA: ${error.error || "Unknown error"}`);
+      }
+    } catch (error) {
+      console.error("Failed to setup 2FA:", error);
+      alert("Failed to setup 2FA");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleVerify2FA() {
+    if (!verifyToken) {
+      alert("Please enter the verification code");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("fizmo_token");
+      const response = await fetch("/api/auth/2fa/verify", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ token: verifyToken }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setBackupCodes(data.backupCodes);
+        setTwoFactorEnabled(true);
+        setShowQRCode(false);
+        setVerifyToken("");
+        alert("Two-factor authentication has been enabled successfully!");
+      } else {
+        const error = await response.json();
+        alert(`Verification failed: ${error.error || "Unknown error"}`);
+      }
+    } catch (error) {
+      console.error("Failed to verify 2FA:", error);
+      alert("Failed to verify 2FA");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleDisable2FA() {
+    const disableToken = prompt("Enter your 2FA code or backup code to disable 2FA:");
+    if (!disableToken) return;
+
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("fizmo_token");
+      const response = await fetch("/api/auth/2fa/disable", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ token: disableToken }),
+      });
+
+      if (response.ok) {
+        setTwoFactorEnabled(false);
+        setBackupCodes([]);
+        alert("Two-factor authentication has been disabled");
+      } else {
+        const error = await response.json();
+        alert(`Failed to disable 2FA: ${error.error || "Unknown error"}`);
+      }
+    } catch (error) {
+      console.error("Failed to disable 2FA:", error);
+      alert("Failed to disable 2FA");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -163,15 +276,102 @@ export default function ProfilePage() {
                 <p className="text-gray-400 text-sm">Add an extra layer of security to your account</p>
               </div>
               <div className="flex items-center space-x-3">
-                <span className="px-3 py-1 bg-red-500/20 text-red-500 rounded text-sm">Disabled</span>
-                <Button size="sm">Enable 2FA</Button>
+                <span
+                  className={`px-3 py-1 rounded text-sm ${
+                    twoFactorEnabled
+                      ? "bg-green-500/20 text-green-500"
+                      : "bg-red-500/20 text-red-500"
+                  }`}
+                >
+                  {twoFactorEnabled ? "Enabled" : "Disabled"}
+                </span>
+                {!twoFactorEnabled ? (
+                  <Button size="sm" onClick={handleEnable2FA} disabled={loading}>
+                    {loading ? "Loading..." : "Enable 2FA"}
+                  </Button>
+                ) : (
+                  <Button size="sm" variant="outline" onClick={handleDisable2FA} disabled={loading}>
+                    {loading ? "Loading..." : "Disable 2FA"}
+                  </Button>
+                )}
               </div>
             </div>
-            <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-              <p className="text-yellow-500 text-sm">
-                We strongly recommend enabling 2FA to protect your account from unauthorized access.
-              </p>
-            </div>
+
+            {/* QR Code Setup Modal */}
+            {showQRCode && (
+              <div className="p-6 bg-fizmo-dark-800 rounded-lg mb-4 space-y-4">
+                <h4 className="text-lg font-bold text-white">Scan QR Code</h4>
+                <p className="text-gray-400 text-sm">
+                  Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.)
+                </p>
+                <div className="flex justify-center">
+                  <img src={qrCodeUrl} alt="2FA QR Code" className="w-64 h-64" />
+                </div>
+                <div className="p-4 bg-fizmo-dark-700 rounded-lg">
+                  <p className="text-white text-sm font-medium mb-2">Manual Entry Code:</p>
+                  <code className="text-fizmo-purple-400 text-sm break-all">{manualEntry}</code>
+                </div>
+                <div className="space-y-2">
+                  <Input
+                    label="Enter Verification Code"
+                    placeholder="Enter 6-digit code from your app"
+                    value={verifyToken}
+                    onChange={(e) => setVerifyToken(e.target.value)}
+                  />
+                  <div className="flex space-x-2">
+                    <Button onClick={handleVerify2FA} disabled={loading}>
+                      {loading ? "Verifying..." : "Verify & Enable"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setShowQRCode(false);
+                        setVerifyToken("");
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Backup Codes Display */}
+            {backupCodes.length > 0 && (
+              <div className="p-6 bg-green-500/10 border border-green-500/30 rounded-lg mb-4">
+                <h4 className="text-lg font-bold text-green-500 mb-2">Backup Codes</h4>
+                <p className="text-gray-400 text-sm mb-4">
+                  Save these backup codes in a safe place. You can use them to access your account if you
+                  lose your authenticator device.
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {backupCodes.map((code, index) => (
+                    <code
+                      key={index}
+                      className="p-2 bg-fizmo-dark-800 rounded text-fizmo-purple-400 text-sm text-center"
+                    >
+                      {code}
+                    </code>
+                  ))}
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="mt-4"
+                  onClick={() => setBackupCodes([])}
+                >
+                  I've Saved My Codes
+                </Button>
+              </div>
+            )}
+
+            {!twoFactorEnabled && !showQRCode && (
+              <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                <p className="text-yellow-500 text-sm">
+                  We strongly recommend enabling 2FA to protect your account from unauthorized access.
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="glassmorphic rounded-xl p-6">
