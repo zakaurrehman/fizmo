@@ -39,6 +39,8 @@ model Broker {
   audits              Audit[]
   systemSettings      SystemSetting[]
   roles               Role[]
+  tickets             Ticket[]
+  notifications       Notification[]
 
   @@map("brokers")
 }
@@ -62,6 +64,8 @@ model User {
   broker        Broker?   @relation(fields: [brokerId], references: [id])
   client        Client?
   sessions      Session[]
+  tickets       Ticket[]
+  notifications Notification[]
 
   @@index([brokerId, email])
   @@map("users")
@@ -465,6 +469,44 @@ enum BrokerStatus {
   SUSPENDED
 }
 
+enum TicketCategory {
+  GENERAL
+  ACCOUNT
+  DEPOSIT
+  WITHDRAWAL
+  TRADING
+  TECHNICAL
+  BILLING
+  KYC
+  OTHER
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING_USER
+  RESOLVED
+  CLOSED
+}
+
+enum NotificationType {
+  SYSTEM
+  ACCOUNT
+  DEPOSIT
+  WITHDRAWAL
+  TRADE
+  KYC
+  SUPPORT
+  PROMOTION
+}
+
 // BankAccount model - Client bank account details for transfers
 model BankAccount {
   id              String   @id @default(cuid())
@@ -526,4 +568,65 @@ model Role {
 
   @@index([brokerId])
   @@map("roles")
+}
+
+// Ticket model - Support tickets
+model Ticket {
+  id          String        @id @default(cuid())
+  brokerId    String?       @map("broker_id")
+  userId      String        @map("user_id")
+  ticketId    String        @unique @map("ticket_id") // TKT-123456
+  subject     String
+  category    TicketCategory @default(GENERAL)
+  priority    TicketPriority @default(MEDIUM)
+  status      TicketStatus  @default(OPEN)
+  assignedTo  String?       @map("assigned_to") // Admin user ID
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  broker      Broker?       @relation(fields: [brokerId], references: [id])
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages    TicketMessage[]
+
+  @@index([brokerId])
+  @@index([userId])
+  @@index([status])
+  @@map("tickets")
+}
+
+// TicketMessage model - Messages within a ticket
+model TicketMessage {
+  id          String   @id @default(cuid())
+  ticketId    String   @map("ticket_id")
+  userId      String   @map("user_id")
+  message     String   @db.Text
+  attachments String[] // Array of file URLs
+  isStaff     Boolean  @default(false) @map("is_staff")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  ticket      Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId])
+  @@map("ticket_messages")
+}
+
+// Notification model - User notifications
+model Notification {
+  id        String            @id @default(cuid())
+  brokerId  String?           @map("broker_id")
+  userId    String            @map("user_id")
+  type      NotificationType
+  title     String
+  message   String            @db.Text
+  isRead    Boolean           @default(false) @map("is_read")
+  metadata  Json?             // Additional data (link, amount, etc.)
+  createdAt DateTime          @default(now()) @map("created_at")
+
+  broker    Broker?           @relation(fields: [brokerId], references: [id])
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([brokerId])
+  @@index([userId, isRead])
+  @@index([createdAt])
+  @@map("notifications")
 }
