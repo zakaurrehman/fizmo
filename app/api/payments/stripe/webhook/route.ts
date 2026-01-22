@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { stripe } from "@/lib/stripe";
+import { getStripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { notifyDeposit } from "@/lib/notifications";
 import Stripe from "stripe";
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     // Verify webhook signature
     let event: Stripe.Event;
     try {
-      event = stripe.webhooks.constructEvent(
+      event = getStripe().webhooks.constructEvent(
         body,
         signature,
         process.env.STRIPE_WEBHOOK_SECRET || ""
@@ -107,7 +107,7 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
       providerTx: session.payment_intent as string,
       metadata: {
         stripeSessionId: session.id,
-        stripePaymentIntent: session.payment_intent,
+        stripePaymentIntent: typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id || null,
         completedAt: new Date().toISOString(),
       },
     },
