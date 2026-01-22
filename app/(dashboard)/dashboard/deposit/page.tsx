@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { FaCreditCard, FaBitcoin, FaUniversity, FaWallet } from "react-icons/fa";
 
-export default function DepositPage() {
+function DepositContent() {
+  const searchParams = useSearchParams();
   const [selectedMethod, setSelectedMethod] = useState<string>("card");
   const [amount, setAmount] = useState("");
   const [selectedAccount, setSelectedAccount] = useState("");
@@ -13,6 +15,19 @@ export default function DepositPage() {
   const [deposits, setDeposits] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
+
+  // Check for Stripe success/cancel
+  useEffect(() => {
+    if (searchParams.get("success") === "true") {
+      setSuccessMessage("Payment successful! Your deposit is being processed.");
+      window.history.replaceState({}, "", "/dashboard/deposit");
+    }
+    if (searchParams.get("canceled") === "true") {
+      alert("Payment was canceled. Please try again.");
+      window.history.replaceState({}, "", "/dashboard/deposit");
+    }
+  }, [searchParams]);
 
   const paymentMethods = [
     { id: "card", name: "Credit/Debit Card", icon: FaCreditCard, available: true },
@@ -52,30 +67,83 @@ export default function DepositPage() {
   }
 
   async function handleDeposit() {
-    if (!selectedAccount || !amount || parseFloat(amount) < 50) {
-      alert("Please select an account and enter a valid amount (min $50)");
+    if (!amount || parseFloat(amount) < 50) {
+      alert("Please enter a valid amount (min $50)");
       return;
     }
 
     setSubmitting(true);
     try {
-      const response = await fetch("/api/deposits", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          accountId: selectedAccount,
-          amount: parseFloat(amount),
-          paymentMethod: selectedMethod,
-        }),
-      });
+      const token = localStorage.getItem("fizmo_token");
 
-      if (response.ok) {
-        alert("Deposit request submitted successfully!");
-        setAmount("");
-        await fetchData();
-      } else {
-        const error = await response.json();
-        alert(error.error || "Failed to submit deposit");
+      // For card payments, use Stripe
+      if (selectedMethod === "card") {
+        const response = await fetch("/api/payments/stripe/checkout", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            amount: parseFloat(amount),
+            currency: "USD",
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          // Redirect to Stripe Checkout
+          window.location.href = data.url;
+        } else {
+          const error = await response.json();
+          alert(error.error || "Failed to create checkout session");
+        }
+      }
+      // For crypto payments, use CoinGate
+      else if (selectedMethod === "crypto") {
+        const response = await fetch("/api/payments/coingate/checkout", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            amount: parseFloat(amount),
+            currency: "USD",
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          // Redirect to CoinGate payment page
+          window.location.href = data.paymentUrl;
+        } else {
+          const error = await response.json();
+          alert(error.error || "Failed to create crypto payment");
+        }
+      }
+      // For bank transfer, create pending deposit
+      else if (selectedMethod === "bank") {
+        const response = await fetch("/api/deposits", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            amount: parseFloat(amount),
+            paymentMethod: "BANK_TRANSFER",
+          }),
+        });
+
+        if (response.ok) {
+          alert("Bank transfer instructions have been sent to your email. Please complete the transfer within 24 hours.");
+          setAmount("");
+          await fetchData();
+        } else {
+          const error = await response.json();
+          alert(error.error || "Failed to submit deposit");
+        }
       }
     } catch (error) {
       console.error("Failed to create deposit:", error);
@@ -87,6 +155,13 @@ export default function DepositPage() {
 
   return (
     <div className="space-y-6">
+      {/* Success Message */}
+      {successMessage && (
+        <div className="p-4 bg-green-500/20 border border-green-500/30 rounded-lg">
+          <p className="text-green-500">{successMessage}</p>
+        </div>
+      )}
+
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-white mb-2">Deposit Funds</h1>
@@ -216,5 +291,14 @@ export default function DepositPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Wrap with Suspense for useSearchParams
+export default function DepositPage() {
+  return (
+    <Suspense fallback={<div className="text-gray-400">Loading...</div>}>
+      <DepositContent />
+    </Suspense>
   );
 }

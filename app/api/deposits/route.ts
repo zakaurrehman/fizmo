@@ -20,15 +20,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Client not found" }, { status: 404 });
     }
 
-    // Get all deposits for this client's accounts
+    // Get all deposits for this client
     const deposits = await prisma.deposit.findMany({
       where: {
-        account: {
-          clientId: client.id,
-        },
-      },
-      include: {
-        account: true,
+        clientId: client.id,
       },
       orderBy: {
         createdAt: "desc",
@@ -45,7 +40,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - Create a new deposit
+// POST - Create a new deposit (for bank transfers - card/crypto use /api/payments/*)
 export async function POST(request: NextRequest) {
   try {
     const user = await verifyAuth(request);
@@ -54,12 +49,12 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { accountId, amount, paymentMethod } = body;
+    const { amount, paymentMethod = "BANK_TRANSFER" } = body;
 
     // Validate input
-    if (!accountId || !amount || !paymentMethod) {
+    if (!amount) {
       return NextResponse.json(
-        { error: "Missing required fields" },
+        { error: "Amount is required" },
         { status: 400 }
       );
     }
@@ -75,42 +70,32 @@ export async function POST(request: NextRequest) {
     // Get client info
     const client = await prisma.client.findUnique({
       where: { userId: user.id },
+      include: {
+        accounts: {
+          where: { status: "ACTIVE" },
+          take: 1,
+        },
+      },
     });
 
     if (!client) {
       return NextResponse.json({ error: "Client not found" }, { status: 404 });
     }
 
-    // Verify account belongs to client
-    const account = await prisma.account.findFirst({
-      where: {
-        id: accountId,
-        clientId: client.id,
-      },
-    });
-
-    if (!account) {
-      return NextResponse.json(
-        { error: "Account not found or does not belong to you" },
-        { status: 404 }
-      );
-    }
-
-    // Create the deposit
+    // Create the deposit linked to client (not account)
     const deposit = await prisma.deposit.create({
       data: {
-        accountId: account.id,
+        brokerId: client.brokerId,
+        clientId: client.id,
         amount: amountNum,
-        paymentMethod,
+        currency: "USD",
+        paymentMethod: paymentMethod,
         status: "PENDING",
-      },
-      include: {
-        account: true,
       },
     });
 
-    // For demo purposes, auto-approve deposits to DEMO accounts
-    if (account.accountType === "DEMO") {
+    // For demo accounts, auto-approve deposits
+    if (client.accounts.length > 0 && client.accounts[0].accountType === "DEMO") {
       await prisma.deposit.update({
         where: { id: deposit.id },
         data: { status: "COMPLETED" },
@@ -118,7 +103,7 @@ export async function POST(request: NextRequest) {
 
       // Update account balance
       await prisma.account.update({
-        where: { id: account.id },
+        where: { id: client.accounts[0].id },
         data: {
           balance: { increment: amountNum },
           equity: { increment: amountNum },
@@ -129,7 +114,7 @@ export async function POST(request: NextRequest) {
       await sendDepositConfirmation(
         user.email,
         amountNum,
-        account.accountNumber,
+        client.accounts[0].accountId,
         client.firstName || undefined
       );
     }
@@ -145,7 +130,7 @@ export async function POST(request: NextRequest) {
         adminUsers[0].email,
         user.email,
         amountNum,
-        account.accountNumber
+        client.accounts[0]?.accountId || "N/A"
       );
     }
 
