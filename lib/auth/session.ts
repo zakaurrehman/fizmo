@@ -6,6 +6,16 @@ import crypto from "crypto";
  * Create a new session for a user
  */
 export async function createSession(userId: string, email: string, role: string, brokerId: string) {
+  // Delete expired sessions first to prevent database bloat
+  await prisma.session.deleteMany({
+    where: {
+      OR: [
+        { userId, expiresAt: { lt: new Date() } }, // Delete expired sessions for this user
+        { expiresAt: { lt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } }, // Delete sessions older than 30 days
+      ],
+    },
+  });
+
   // Create JWT token
   const token = await createToken({ userId, email, role, brokerId });
 

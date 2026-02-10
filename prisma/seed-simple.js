@@ -29,7 +29,25 @@ async function main() {
     await prisma.client.deleteMany();
     await prisma.session.deleteMany();
     await prisma.user.deleteMany();
+    await prisma.broker.deleteMany();
   }
+
+  // Create default broker
+  console.log('🏢 Creating default broker...');
+  const defaultBroker = await prisma.broker.create({
+    data: {
+      name: 'Fizmo Trader',
+      slug: 'fizmo-trader',
+      domain: 'fizmo-alpha.vercel.app',
+      status: 'ACTIVE',
+      settings: {
+        allowRegistration: true,
+        requireEmailVerification: false,
+        requireKyc: false,
+      },
+    },
+  });
+  console.log(`✅ Default broker created: ${defaultBroker.name}`);
 
   // Hash passwords
   const password = await bcrypt.hash('password123', 10);
@@ -42,6 +60,7 @@ async function main() {
       passwordHash: password,
       role: 'ADMIN',
       kycStatus: 'APPROVED',
+      brokerId: defaultBroker.id,
     },
   });
   console.log(`✅ Admin created: ${adminUser.email}`);
@@ -54,6 +73,7 @@ async function main() {
       passwordHash: password,
       role: 'SUPER_ADMIN',
       kycStatus: 'APPROVED',
+      brokerId: defaultBroker.id,
     },
   });
   console.log(`✅ Super Admin created: ${superAdmin.email}`);
@@ -66,6 +86,7 @@ async function main() {
       passwordHash: password,
       role: 'CLIENT',
       kycStatus: 'APPROVED',
+      brokerId: defaultBroker.id,
       client: {
         create: {
           clientId: 'CLT-000001',
@@ -73,6 +94,7 @@ async function main() {
           lastName: 'Doe',
           phone: '+1 555-0101',
           country: 'USA',
+          brokerId: defaultBroker.id,
           labels: ['VIP', 'Active'],
           metadata: {
             notes: 'High-value client',
@@ -124,6 +146,7 @@ async function main() {
       passwordHash: password,
       role: 'CLIENT',
       kycStatus: 'PENDING',
+      brokerId: defaultBroker.id,
       client: {
         create: {
           clientId: 'CLT-000002',
@@ -131,6 +154,7 @@ async function main() {
           lastName: 'Smith',
           phone: '+1 555-0102',
           country: 'UK',
+          brokerId: defaultBroker.id,
           labels: ['Active'],
           metadata: {},
         },
@@ -167,6 +191,7 @@ async function main() {
       passwordHash: password,
       role: 'IB',
       kycStatus: 'APPROVED',
+      brokerId: defaultBroker.id,
       client: {
         create: {
           clientId: 'IB-000001',
@@ -174,6 +199,7 @@ async function main() {
           lastName: 'Johnson',
           phone: '+1 555-0103',
           country: 'USA',
+          brokerId: defaultBroker.id,
           labels: ['IB Partner'],
           metadata: {
             ibLevel: 'Silver',
@@ -205,7 +231,8 @@ async function main() {
 
   console.log('✅ Database seeded successfully!');
   console.log('\n📊 Summary:');
-  console.log('- 4 Users created (1 Super Admin, 1 Admin, 2 Traders, 1 IB)');
+  console.log(`- 1 Broker created (${defaultBroker.name})`);
+  console.log('- 5 Users created (1 Super Admin, 1 Admin, 2 Traders, 1 IB)');
   console.log('- 4 Clients created');
   console.log('- 3 Trading accounts created');
   console.log('- 2 Audit logs created');
