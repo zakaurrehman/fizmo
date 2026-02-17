@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { useAuth } from "@/lib/context/AuthContext";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Logo } from "@/components/ui/Logo";
 
 export default function SuperAdminLoginPage() {
   const router = useRouter();
+  const { login } = useAuth();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -22,29 +23,14 @@ export default function SuperAdminLoginPage() {
     setLoading(true);
 
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Login failed");
-      }
+      const user = await login(formData.email, formData.password);
 
       // Verify user is SUPER_ADMIN
-      if (data.data.user.role !== "SUPER_ADMIN") {
+      if (user.role !== "SUPER_ADMIN") {
         setError("Access denied. SUPER_ADMIN role required.");
         setLoading(false);
         return;
       }
-
-      // Store token
-      localStorage.setItem("fizmo_token", data.data.token);
 
       // Redirect to super admin dashboard
       router.push("/super-admin");

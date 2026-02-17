@@ -24,7 +24,15 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await login(formData.email, formData.password);
+      const user = await login(formData.email, formData.password);
+
+      // Block admin roles from client login
+      if (user.role === "ADMIN" || user.role === "SUPER_ADMIN") {
+        setError("Please use the admin login page");
+        setLoading(false);
+        return;
+      }
+
       router.push("/dashboard");
     } catch (err: any) {
       setError(err.message || "Login failed");

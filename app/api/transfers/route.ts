@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { verifyToken } from "@/lib/auth";
+import { verifyAuth } from "@/lib/auth";
 
 // GET - Fetch transfer history
 export async function GET(request: NextRequest) {
   try {
     // Verify authentication
-    const user = await verifyToken(request);
+    const user = await verifyAuth(request);
     if (!user) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Verify authentication
-    const user = await verifyToken(request);
+    const user = await verifyAuth(request);
     if (!user) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }

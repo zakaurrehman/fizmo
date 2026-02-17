@@ -19,7 +19,7 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<User>;
   register: (data: RegisterData) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -76,8 +76,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Login function
-  const login = async (email: string, password: string) => {
+  // Login function - returns user so callers can route based on role
+  const login = async (email: string, password: string): Promise<User> => {
     const response = await fetch("/api/auth/login", {
       method: "POST",
       headers: {
@@ -93,16 +93,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const authData: AuthResponse = data.data;
-
-    // Validate role - CLIENT only for this login page
-    // Admins should use /admin/login, Super admins should use /super-admin/login
-    if (authData.user.role === "ADMIN" || authData.user.role === "SUPER_ADMIN") {
-      throw new Error("Please use the admin login page");
-    }
+    const loggedInUser = authData.user as User;
 
     setToken(authData.token);
-    setUser(authData.user as User);
+    setUser(loggedInUser);
     localStorage.setItem("fizmo_token", authData.token);
+
+    return loggedInUser;
   };
 
   // Register function
