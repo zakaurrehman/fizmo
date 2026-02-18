@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { verifyAuth } from "@/lib/auth";
+import { verifyAuth, getBrokerIdFromToken } from "@/lib/auth";
 
 // GET - Fetch individual client details (Admin only)
 export async function GET(
@@ -24,28 +24,22 @@ export async function GET(
         user: {
           select: {
             email: true,
+            status: true,
+            kycStatus: true,
             createdAt: true,
           },
         },
         accounts: {
-          include: {
-            deposits: {
-              orderBy: { createdAt: "desc" },
-            },
-            withdrawals: {
-              orderBy: { createdAt: "desc" },
-            },
-            _count: {
-              select: {
-                deposits: true,
-                withdrawals: true,
-              },
-            },
-          },
+          orderBy: { createdAt: "desc" },
+        },
+        deposits: {
+          orderBy: { createdAt: "desc" },
+        },
+        withdrawals: {
           orderBy: { createdAt: "desc" },
         },
         kycDocuments: {
-          orderBy: { uploadedAt: "desc" },
+          orderBy: { createdAt: "desc" },
         },
       },
     });
@@ -56,41 +50,35 @@ export async function GET(
 
     // Calculate statistics
     const totalBalance = client.accounts.reduce(
-      (sum, acc) => sum + acc.balance,
+      (sum, acc) => sum + Number(acc.balance),
       0
     );
     const totalEquity = client.accounts.reduce(
-      (sum, acc) => sum + acc.equity,
+      (sum, acc) => sum + Number(acc.equity),
       0
     );
 
-    // Get all deposits across all accounts
-    const allDeposits = client.accounts.flatMap((acc) =>
-      acc.deposits.map((d) => ({
-        id: d.id,
-        accountId: acc.mt5Id,
-        type: "DEPOSIT" as const,
-        amount: d.amount,
-        currency: d.currency,
-        status: d.status,
-        paymentMethod: d.paymentMethod,
-        timestamp: d.createdAt,
-      }))
-    );
+    // Format deposits
+    const allDeposits = client.deposits.map((d) => ({
+      id: d.id,
+      type: "DEPOSIT" as const,
+      amount: Number(d.amount),
+      currency: d.currency,
+      status: d.status,
+      paymentMethod: d.paymentMethod,
+      timestamp: d.createdAt,
+    }));
 
-    // Get all withdrawals across all accounts
-    const allWithdrawals = client.accounts.flatMap((acc) =>
-      acc.withdrawals.map((w) => ({
-        id: w.id,
-        accountId: acc.mt5Id,
-        type: "WITHDRAWAL" as const,
-        amount: w.amount,
-        currency: w.currency,
-        status: w.status,
-        paymentMethod: w.paymentMethod,
-        timestamp: w.createdAt,
-      }))
-    );
+    // Format withdrawals
+    const allWithdrawals = client.withdrawals.map((w) => ({
+      id: w.id,
+      type: "WITHDRAWAL" as const,
+      amount: Number(w.amount),
+      currency: w.currency,
+      status: w.status,
+      paymentMethod: w.paymentMethod,
+      timestamp: w.createdAt,
+    }));
 
     // Combine and sort transactions
     const allTransactions = [...allDeposits, ...allWithdrawals].sort(
@@ -109,23 +97,19 @@ export async function GET(
       email: client.user.email,
       country: client.country,
       phone: client.phone,
-      address: client.address,
-      dateOfBirth: client.dateOfBirth,
-      kycStatus: client.kycStatus,
+      kycStatus: client.user.kycStatus,
       labels: client.labels,
       registeredAt: client.user.createdAt,
       accounts: client.accounts.map((acc) => ({
         id: acc.id,
-        mt5Id: acc.mt5Id,
+        accountId: acc.accountId,
         accountType: acc.accountType,
         currency: acc.currency,
-        balance: acc.balance,
-        equity: acc.equity,
+        balance: Number(acc.balance),
+        equity: Number(acc.equity),
         leverage: acc.leverage,
         status: acc.status,
         createdAt: acc.createdAt,
-        depositCount: acc._count.deposits,
-        withdrawalCount: acc._count.withdrawals,
       })),
       kycDocuments: client.kycDocuments,
       transactions: allTransactions,
@@ -147,5 +131,64 @@ export async function GET(
       { error: "Internal server error", details: error.message },
       { status: 500 }
     );
+  }
+}
+
+// PATCH - Update client details (Admin only)
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const user = await verifyAuth(request);
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const brokerId = await getBrokerIdFromToken(request);
+    if (!brokerId) {
+      return NextResponse.json({ error: "Broker context not found" }, { status: 400 });
+    }
+
+    const { id } = params;
+
+    const client = await prisma.client.findFirst({
+      where: { id, brokerId },
+    });
+
+    if (!client) {
+      return NextResponse.json({ error: "Client not found" }, { status: 404 });
+    }
+
+    const body = await request.json();
+    const { firstName, lastName, phone, country, labels, kycStatus } = body;
+
+    // Update client fields
+    const clientUpdate: any = {};
+    if (firstName !== undefined) clientUpdate.firstName = firstName;
+    if (lastName !== undefined) clientUpdate.lastName = lastName;
+    if (phone !== undefined) clientUpdate.phone = phone;
+    if (country !== undefined) clientUpdate.country = country;
+    if (labels !== undefined) clientUpdate.labels = labels;
+
+    if (Object.keys(clientUpdate).length > 0) {
+      await prisma.client.update({
+        where: { id },
+        data: clientUpdate,
+      });
+    }
+
+    // Update KYC status on User model if provided
+    if (kycStatus) {
+      await prisma.user.update({
+        where: { id: client.userId },
+        data: { kycStatus },
+      });
+    }
+
+    return NextResponse.json({ success: true, message: "Client updated successfully" });
+  } catch (error: any) {
+    console.error("Admin client update error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

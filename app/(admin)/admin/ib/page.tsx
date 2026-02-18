@@ -8,6 +8,10 @@ export default function AdminIBPage() {
   const [ibs, setIbs] = useState<any[]>([]);
   const [payouts, setPayouts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingIB, setEditingIB] = useState<any>(null);
+  const [ibForm, setIBForm] = useState({ name: "", email: "", tier: "BRONZE", commissionRate: "" });
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetchIBs();
@@ -105,6 +109,68 @@ export default function AdminIBPage() {
     }
   }
 
+  async function saveIB() {
+    setSaving(true);
+    try {
+      if (editingIB) {
+        // Update existing IB
+        const res = await fetch("/api/admin/ib", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: editingIB.id,
+            name: ibForm.name,
+            email: ibForm.email,
+            tier: ibForm.tier,
+            commissionRate: ibForm.commissionRate ? Number(ibForm.commissionRate) : undefined,
+          }),
+        });
+        if (res.ok) {
+          closeModal();
+          fetchIBs();
+        } else {
+          const data = await res.json();
+          alert(data.error || "Failed to update IB");
+        }
+      } else {
+        // Create new IB
+        const res = await fetch("/api/admin/ib", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: ibForm.name,
+            email: ibForm.email,
+            tier: ibForm.tier,
+            commissionRate: ibForm.commissionRate ? Number(ibForm.commissionRate) : undefined,
+          }),
+        });
+        if (res.ok) {
+          closeModal();
+          fetchIBs();
+        } else {
+          const data = await res.json();
+          alert(data.error || "Failed to create IB");
+        }
+      }
+    } catch (error) {
+      alert("Failed to save IB");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function openEditModal(ib: any) {
+    setEditingIB(ib);
+    setIBForm({ name: ib.name, email: ib.email, tier: ib.tier, commissionRate: String(ib.commissionRate) });
+    setShowCreateModal(true);
+  }
+
+  function closeModal() {
+    setShowCreateModal(false);
+    setEditingIB(null);
+    setIBForm({ name: "", email: "", tier: "BRONZE", commissionRate: "" });
+  }
+
   // Calculate aggregate stats
   const totalIBs = ibs.length;
   const activeIBs = ibs.filter((ib) => ib.status === "ACTIVE").length;
@@ -132,7 +198,7 @@ export default function AdminIBPage() {
         </div>
         <div className="flex space-x-3">
           <Button variant="outline">Process Payouts</Button>
-          <Button>+ Add New IB</Button>
+          <Button onClick={() => { setIBForm({ name: "", email: "", tier: "BRONZE", commissionRate: "" }); setEditingIB(null); setShowCreateModal(true); }}>+ Add New IB</Button>
         </div>
       </div>
 
@@ -307,7 +373,7 @@ export default function AdminIBPage() {
                           <button className="text-fizmo-purple-400 hover:text-fizmo-purple-300">
                             View
                           </button>
-                          <button className="text-blue-400 hover:text-blue-300">Edit</button>
+                          <button onClick={() => openEditModal(ib)} className="text-blue-400 hover:text-blue-300">Edit</button>
                         </div>
                       </td>
                     </tr>
@@ -516,6 +582,79 @@ export default function AdminIBPage() {
           </div>
         </div>
       </div>
+
+      {/* Create/Edit IB Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="glassmorphic rounded-xl p-6 max-w-lg w-full mx-4">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-white">
+                {editingIB ? "Edit IB" : "Add New IB"}
+              </h2>
+              <button onClick={closeModal} className="text-gray-400 hover:text-white">✕</button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Name</label>
+                <input
+                  type="text"
+                  value={ibForm.name}
+                  onChange={(e) => setIBForm({ ...ibForm, name: e.target.value })}
+                  className="w-full px-4 py-2 bg-fizmo-dark-800 border border-fizmo-purple-500/30 rounded-lg text-white"
+                  placeholder="Full name"
+                />
+              </div>
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Email</label>
+                <input
+                  type="email"
+                  value={ibForm.email}
+                  onChange={(e) => setIBForm({ ...ibForm, email: e.target.value })}
+                  className="w-full px-4 py-2 bg-fizmo-dark-800 border border-fizmo-purple-500/30 rounded-lg text-white"
+                  placeholder="email@example.com"
+                />
+              </div>
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Tier</label>
+                <select
+                  value={ibForm.tier}
+                  onChange={(e) => setIBForm({ ...ibForm, tier: e.target.value })}
+                  className="w-full px-4 py-2 bg-fizmo-dark-800 border border-fizmo-purple-500/30 rounded-lg text-white"
+                >
+                  <option value="BRONZE">Bronze (20%)</option>
+                  <option value="SILVER">Silver (25%)</option>
+                  <option value="GOLD">Gold (30%)</option>
+                  <option value="PLATINUM">Platinum (35%)</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Commission Rate (%)</label>
+                <input
+                  type="number"
+                  value={ibForm.commissionRate}
+                  onChange={(e) => setIBForm({ ...ibForm, commissionRate: e.target.value })}
+                  className="w-full px-4 py-2 bg-fizmo-dark-800 border border-fizmo-purple-500/30 rounded-lg text-white"
+                  placeholder="Leave blank for tier default"
+                />
+              </div>
+
+              <div className="flex space-x-3 pt-4">
+                <Button variant="outline" className="flex-1" onClick={closeModal}>
+                  Cancel
+                </Button>
+                <Button
+                  className="flex-1"
+                  disabled={!ibForm.name.trim() || !ibForm.email.trim() || saving}
+                  onClick={saveIB}
+                >
+                  {saving ? "Saving..." : editingIB ? "Update IB" : "Create IB"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/context/AuthContext";
 import { IconType } from "react-icons";
-import { FaChartBar, FaUsers, FaUser, FaBriefcase, FaExchangeAlt, FaDollarSign, FaMoneyBillWave, FaExclamationTriangle, FaHandshake, FaChartLine, FaShieldAlt, FaFileAlt, FaCog } from "react-icons/fa";
+import { FaChartBar, FaUsers, FaUser, FaBriefcase, FaExchangeAlt, FaDollarSign, FaMoneyBillWave, FaExclamationTriangle, FaHandshake, FaChartLine, FaShieldAlt, FaFileAlt, FaCog, FaHeadset } from "react-icons/fa";
 import { Logo } from "@/components/ui/Logo";
 
 interface MenuItem {
@@ -22,6 +22,7 @@ const menuItems: MenuItem[] = [
   { icon: FaDollarSign, label: "Deposits", href: "/admin/deposits" },
   { icon: FaMoneyBillWave, label: "Withdrawals", href: "/admin/withdrawals" },
   { icon: FaExclamationTriangle, label: "AML Monitoring", href: "/admin/aml" },
+  { icon: FaHeadset, label: "Support Tickets", href: "/admin/support" },
   { icon: FaHandshake, label: "IB Management", href: "/admin/ib" },
   { icon: FaChartLine, label: "Reports & BI", href: "/admin/reports" },
   { icon: FaShieldAlt, label: "User Roles & Permissions", href: "/admin/roles" },

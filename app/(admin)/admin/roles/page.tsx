@@ -8,6 +8,10 @@ export default function UserRolesPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [roles, setRoles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [newRoleName, setNewRoleName] = useState("");
+  const [newRoleDescription, setNewRoleDescription] = useState("");
+  const [newRolePermissions, setNewRolePermissions] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetchRoles();
@@ -367,7 +371,7 @@ export default function UserRolesPage() {
         </>
       )}
 
-      {/* Create Role Modal (placeholder) */}
+      {/* Create Role Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="glassmorphic rounded-xl p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
@@ -382,13 +386,94 @@ export default function UserRolesPage() {
             </div>
 
             <div className="space-y-4">
-              <p className="text-gray-400 text-sm">
-                Role creation UI coming soon. Use the API to create custom roles for now.
-              </p>
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Role Name</label>
+                <input
+                  type="text"
+                  value={newRoleName}
+                  onChange={(e) => setNewRoleName(e.target.value)}
+                  className="w-full px-4 py-2 bg-fizmo-dark-800 border border-fizmo-purple-500/30 rounded-lg text-white"
+                  placeholder="e.g. Support Manager"
+                />
+              </div>
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Description</label>
+                <input
+                  type="text"
+                  value={newRoleDescription}
+                  onChange={(e) => setNewRoleDescription(e.target.value)}
+                  className="w-full px-4 py-2 bg-fizmo-dark-800 border border-fizmo-purple-500/30 rounded-lg text-white"
+                  placeholder="Brief description of this role"
+                />
+              </div>
+
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">Permissions</label>
+                <div className="space-y-3 max-h-60 overflow-y-auto">
+                  {permissionCategories.map((category) => (
+                    <div key={category.name} className="p-3 bg-fizmo-dark-800 rounded-lg">
+                      <h4 className="text-white font-semibold text-sm mb-2">{category.name}</h4>
+                      <div className="grid grid-cols-2 gap-2">
+                        {category.permissions.map((perm) => (
+                          <label key={perm.id} className="flex items-center space-x-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={newRolePermissions.includes(perm.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setNewRolePermissions([...newRolePermissions, perm.id]);
+                                } else {
+                                  setNewRolePermissions(newRolePermissions.filter((p) => p !== perm.id));
+                                }
+                              }}
+                              className="rounded border-fizmo-purple-500"
+                            />
+                            <span className="text-gray-300 text-sm">{perm.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
               <div className="flex space-x-3 pt-4">
                 <Button variant="outline" className="flex-1" onClick={() => setShowCreateModal(false)}>
-                  Close
+                  Cancel
+                </Button>
+                <Button
+                  className="flex-1"
+                  disabled={!newRoleName.trim() || saving}
+                  onClick={async () => {
+                    setSaving(true);
+                    try {
+                      const res = await fetch("/api/admin/roles", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          name: newRoleName.trim(),
+                          description: newRoleDescription.trim(),
+                          permissions: newRolePermissions,
+                        }),
+                      });
+                      if (res.ok) {
+                        setShowCreateModal(false);
+                        setNewRoleName("");
+                        setNewRoleDescription("");
+                        setNewRolePermissions([]);
+                        fetchRoles();
+                      } else {
+                        const data = await res.json();
+                        alert(data.error || "Failed to create role");
+                      }
+                    } catch {
+                      alert("Failed to create role");
+                    } finally {
+                      setSaving(false);
+                    }
+                  }}
+                >
+                  {saving ? "Creating..." : "Create Role"}
                 </Button>
               </div>
             </div>

@@ -50,6 +50,74 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// POST - Create a manual deposit (Admin only)
+export async function POST(request: NextRequest) {
+  try {
+    const user = await verifyAuth(request);
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const brokerId = await getBrokerIdFromToken(request);
+    if (!brokerId) {
+      return NextResponse.json({ error: "Broker context not found" }, { status: 400 });
+    }
+
+    const body = await request.json();
+    const { clientId, amount, currency, paymentMethod, referenceNumber } = body;
+
+    if (!clientId || !amount) {
+      return NextResponse.json({ error: "Client ID and amount are required" }, { status: 400 });
+    }
+
+    // Verify client belongs to this broker
+    const client = await prisma.client.findFirst({
+      where: { id: clientId, brokerId },
+      include: {
+        user: true,
+        accounts: { where: { status: "ACTIVE" }, take: 1 },
+      },
+    });
+
+    if (!client) {
+      return NextResponse.json({ error: "Client not found" }, { status: 404 });
+    }
+
+    // Create deposit as COMPLETED (admin manual deposit)
+    const deposit = await prisma.deposit.create({
+      data: {
+        brokerId,
+        clientId,
+        amount,
+        currency: currency || "USD",
+        paymentMethod: paymentMethod || "BANK_TRANSFER",
+        referenceNumber: referenceNumber || `ADMIN-${Date.now()}`,
+        provider: "Manual",
+        status: "COMPLETED",
+      },
+    });
+
+    // Update first active account balance
+    if (client.accounts.length > 0) {
+      await prisma.account.update({
+        where: { id: client.accounts[0].id },
+        data: {
+          balance: { increment: amount },
+          equity: { increment: amount },
+        },
+      });
+    }
+
+    // Send notification
+    await notifyDeposit(client.user.id, Number(amount), "COMPLETED", deposit.id);
+
+    return NextResponse.json({ success: true, deposit }, { status: 201 });
+  } catch (error: any) {
+    console.error("Admin manual deposit error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
 // PATCH - Approve/Reject deposit
 export async function PATCH(request: NextRequest) {
   try {
