@@ -1,89 +1,141 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useAuth } from "@/lib/context/AuthContext";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { KYCUpload } from "@/components/dashboard/KYCUpload";
 
 export default function ProfilePage() {
+  const { token } = useAuth();
   const [selectedTab, setSelectedTab] = useState("personal");
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [showQRCode, setShowQRCode] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState("");
   const [manualEntry, setManualEntry] = useState("");
-  const [verifyToken, setVerifyToken] = useState("");
+  const [verifyTokenInput, setVerifyTokenInput] = useState("");
   const [backupCodes, setBackupCodes] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [success, setSuccess] = useState("");
+  const [error, setError] = useState("");
+
+  // Profile form data
+  const [profile, setProfile] = useState({
+    email: "",
+    firstName: "",
+    lastName: "",
+    phone: "",
+    country: "",
+    kycStatus: "NOT_STARTED",
+    labels: [] as string[],
+  });
 
   useEffect(() => {
-    checkTwoFactorStatus();
-  }, []);
+    if (token) fetchProfile();
+  }, [token]);
 
-  async function checkTwoFactorStatus() {
-    // This would normally fetch from an API endpoint
-    // For now, we'll check from the user's session or local state
+  async function fetchProfile() {
+    try {
+      const res = await fetch("/api/profile", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setProfile(data.data);
+        setTwoFactorEnabled(data.data.twoFactorEnabled || false);
+      }
+    } catch (err) {
+      console.error("Failed to fetch profile:", err);
+    } finally {
+      setProfileLoading(false);
+    }
+  }
+
+  async function handleSaveProfile() {
+    setSaving(true);
+    setError("");
+    setSuccess("");
+    try {
+      const res = await fetch("/api/profile", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          firstName: profile.firstName,
+          lastName: profile.lastName,
+          phone: profile.phone,
+          country: profile.country,
+        }),
+      });
+      if (res.ok) {
+        setSuccess("Profile updated successfully!");
+        setTimeout(() => setSuccess(""), 3000);
+      } else {
+        const data = await res.json();
+        setError(data.message || "Failed to save");
+      }
+    } catch (err) {
+      setError("Failed to save profile");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function handleEnable2FA() {
     setLoading(true);
     try {
-      const token = localStorage.getItem("fizmo_token");
       const response = await fetch("/api/auth/2fa/setup", {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
-
       if (response.ok) {
         const data = await response.json();
         setQrCodeUrl(data.qrCode);
         setManualEntry(data.manualEntry);
         setShowQRCode(true);
       } else {
-        const error = await response.json();
-        alert(`Failed to setup 2FA: ${error.error || "Unknown error"}`);
+        const err = await response.json();
+        setError(`Failed to setup 2FA: ${err.error || "Unknown error"}`);
       }
-    } catch (error) {
-      console.error("Failed to setup 2FA:", error);
-      alert("Failed to setup 2FA");
+    } catch (err) {
+      setError("Failed to setup 2FA");
     } finally {
       setLoading(false);
     }
   }
 
   async function handleVerify2FA() {
-    if (!verifyToken) {
-      alert("Please enter the verification code");
+    if (!verifyTokenInput) {
+      setError("Please enter the verification code");
       return;
     }
-
     setLoading(true);
     try {
-      const token = localStorage.getItem("fizmo_token");
       const response = await fetch("/api/auth/2fa/verify", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ token: verifyToken }),
+        body: JSON.stringify({ token: verifyTokenInput }),
       });
-
       if (response.ok) {
         const data = await response.json();
         setBackupCodes(data.backupCodes);
         setTwoFactorEnabled(true);
         setShowQRCode(false);
-        setVerifyToken("");
-        alert("Two-factor authentication has been enabled successfully!");
+        setVerifyTokenInput("");
+        setSuccess("Two-factor authentication enabled!");
       } else {
-        const error = await response.json();
-        alert(`Verification failed: ${error.error || "Unknown error"}`);
+        const err = await response.json();
+        setError(`Verification failed: ${err.error || "Unknown error"}`);
       }
-    } catch (error) {
-      console.error("Failed to verify 2FA:", error);
-      alert("Failed to verify 2FA");
+    } catch (err) {
+      setError("Failed to verify 2FA");
     } finally {
       setLoading(false);
     }
@@ -92,10 +144,8 @@ export default function ProfilePage() {
   async function handleDisable2FA() {
     const disableToken = prompt("Enter your 2FA code or backup code to disable 2FA:");
     if (!disableToken) return;
-
     setLoading(true);
     try {
-      const token = localStorage.getItem("fizmo_token");
       const response = await fetch("/api/auth/2fa/disable", {
         method: "POST",
         headers: {
@@ -104,21 +154,29 @@ export default function ProfilePage() {
         },
         body: JSON.stringify({ token: disableToken }),
       });
-
       if (response.ok) {
         setTwoFactorEnabled(false);
         setBackupCodes([]);
-        alert("Two-factor authentication has been disabled");
+        setSuccess("Two-factor authentication disabled");
       } else {
-        const error = await response.json();
-        alert(`Failed to disable 2FA: ${error.error || "Unknown error"}`);
+        const err = await response.json();
+        setError(`Failed to disable 2FA: ${err.error || "Unknown error"}`);
       }
-    } catch (error) {
-      console.error("Failed to disable 2FA:", error);
-      alert("Failed to disable 2FA");
+    } catch (err) {
+      setError("Failed to disable 2FA");
     } finally {
       setLoading(false);
     }
+  }
+
+  const initials = `${(profile.firstName || "?")[0]}${(profile.lastName || "?")[0]}`.toUpperCase();
+
+  if (profileLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-fizmo-purple-500"></div>
+      </div>
+    );
   }
 
   return (
@@ -129,122 +187,112 @@ export default function ProfilePage() {
           <h1 className="text-3xl font-bold text-white mb-2">Profile Settings</h1>
           <p className="text-gray-400">Manage your account information and preferences</p>
         </div>
-        <div className="flex space-x-3">
-          <Button variant="outline">Cancel</Button>
-          <Button>Save Changes</Button>
-        </div>
+        {selectedTab === "personal" && (
+          <Button onClick={handleSaveProfile} loading={saving}>Save Changes</Button>
+        )}
       </div>
+
+      {/* Status Messages */}
+      {success && (
+        <div className="p-4 bg-green-500/10 border border-green-500/50 rounded-lg">
+          <p className="text-green-500 text-sm">{success}</p>
+        </div>
+      )}
+      {error && (
+        <div className="p-4 bg-red-500/10 border border-red-500/50 rounded-lg">
+          <p className="text-red-500 text-sm">{error}</p>
+        </div>
+      )}
 
       {/* Profile Overview */}
       <div className="glassmorphic rounded-xl p-6">
         <div className="flex items-center space-x-6">
           <div className="w-24 h-24 rounded-full bg-gradient-fizmo flex items-center justify-center">
-            <span className="text-white text-3xl font-bold">SC</span>
+            <span className="text-white text-3xl font-bold">{initials}</span>
           </div>
           <div className="flex-1">
-            <h2 className="text-2xl font-bold text-white mb-1">Sarah Connor</h2>
-            <p className="text-gray-400 mb-2">sarah.connor@example.com</p>
+            <h2 className="text-2xl font-bold text-white mb-1">
+              {profile.firstName} {profile.lastName}
+            </h2>
+            <p className="text-gray-400 mb-2">{profile.email}</p>
             <div className="flex items-center space-x-3">
-              <span className="px-3 py-1 bg-green-500/20 text-green-500 rounded text-sm font-semibold">
-                VERIFIED
+              <span className={`px-3 py-1 rounded text-sm font-semibold ${
+                profile.kycStatus === "APPROVED" ? "bg-green-500/20 text-green-500" :
+                profile.kycStatus === "PENDING" ? "bg-yellow-500/20 text-yellow-500" :
+                "bg-gray-500/20 text-gray-400"
+              }`}>
+                {profile.kycStatus === "APPROVED" ? "VERIFIED" : profile.kycStatus}
               </span>
-              <span className="px-3 py-1 bg-fizmo-purple-500/20 text-fizmo-purple-400 rounded text-sm font-semibold">
-                VIP
-              </span>
+              {profile.labels?.includes("VIP") && (
+                <span className="px-3 py-1 bg-fizmo-purple-500/20 text-fizmo-purple-400 rounded text-sm font-semibold">
+                  VIP
+                </span>
+              )}
             </div>
           </div>
-          <Button variant="outline">Change Photo</Button>
         </div>
       </div>
 
       {/* Settings Tabs */}
       <div className="glassmorphic rounded-xl p-6">
         <div className="flex space-x-2">
-          <button
-            onClick={() => setSelectedTab("personal")}
-            className={`px-4 py-2 rounded-lg transition-all ${
-              selectedTab === "personal"
-                ? "bg-fizmo-purple-500 text-white"
-                : "bg-fizmo-dark-800 text-gray-400 hover:text-white"
-            }`}
-          >
-            Personal Info
-          </button>
-          <button
-            onClick={() => setSelectedTab("security")}
-            className={`px-4 py-2 rounded-lg transition-all ${
-              selectedTab === "security"
-                ? "bg-fizmo-purple-500 text-white"
-                : "bg-fizmo-dark-800 text-gray-400 hover:text-white"
-            }`}
-          >
-            Security
-          </button>
-          <button
-            onClick={() => setSelectedTab("preferences")}
-            className={`px-4 py-2 rounded-lg transition-all ${
-              selectedTab === "preferences"
-                ? "bg-fizmo-purple-500 text-white"
-                : "bg-fizmo-dark-800 text-gray-400 hover:text-white"
-            }`}
-          >
-            Preferences
-          </button>
-          <button
-            onClick={() => setSelectedTab("verification")}
-            className={`px-4 py-2 rounded-lg transition-all ${
-              selectedTab === "verification"
-                ? "bg-fizmo-purple-500 text-white"
-                : "bg-fizmo-dark-800 text-gray-400 hover:text-white"
-            }`}
-          >
-            Verification
-          </button>
+          {[
+            { key: "personal", label: "Personal Info" },
+            { key: "security", label: "Security" },
+            { key: "verification", label: "Verification" },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => { setSelectedTab(tab.key); setError(""); setSuccess(""); }}
+              className={`px-4 py-2 rounded-lg transition-all ${
+                selectedTab === tab.key
+                  ? "bg-fizmo-purple-500 text-white"
+                  : "bg-fizmo-dark-800 text-gray-400 hover:text-white"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
       </div>
 
       {/* Personal Info Tab */}
       {selectedTab === "personal" && (
-        <div className="space-y-6">
-          <div className="glassmorphic rounded-xl p-6">
-            <h3 className="text-xl font-bold text-white mb-4">Personal Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input label="First Name" defaultValue="Sarah" />
-              <Input label="Last Name" defaultValue="Connor" />
-              <Input label="Email Address" defaultValue="sarah.connor@example.com" type="email" />
-              <Input label="Phone Number" defaultValue="+1 (555) 123-4567" />
-              <Input label="Date of Birth" defaultValue="1985-03-15" type="date" />
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Gender</label>
-                <select className="w-full px-4 py-3 bg-fizmo-dark-800 border border-fizmo-purple-500/30 rounded-lg text-white">
-                  <option>Female</option>
-                  <option>Male</option>
-                  <option>Other</option>
-                  <option>Prefer not to say</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <div className="glassmorphic rounded-xl p-6">
-            <h3 className="text-xl font-bold text-white mb-4">Address</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="md:col-span-2">
-                <Input label="Street Address" defaultValue="1234 Tech Noir St, Suite 500" />
-              </div>
-              <Input label="City" defaultValue="Los Angeles" />
-              <Input label="State/Province" defaultValue="California" />
-              <Input label="ZIP/Postal Code" defaultValue="90001" />
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Country</label>
-                <select className="w-full px-4 py-3 bg-fizmo-dark-800 border border-fizmo-purple-500/30 rounded-lg text-white">
-                  <option>United States</option>
-                  <option>United Kingdom</option>
-                  <option>Canada</option>
-                  <option>Australia</option>
-                  <option>Germany</option>
-                </select>
-              </div>
+        <div className="glassmorphic rounded-xl p-6">
+          <h3 className="text-xl font-bold text-white mb-4">Personal Information</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="First Name"
+              value={profile.firstName}
+              onChange={(e) => setProfile({ ...profile, firstName: e.target.value })}
+            />
+            <Input
+              label="Last Name"
+              value={profile.lastName}
+              onChange={(e) => setProfile({ ...profile, lastName: e.target.value })}
+            />
+            <Input label="Email Address" value={profile.email} type="email" disabled />
+            <Input
+              label="Phone Number"
+              value={profile.phone}
+              onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+            />
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Country</label>
+              <select
+                value={profile.country}
+                onChange={(e) => setProfile({ ...profile, country: e.target.value })}
+                className="w-full px-4 py-3 bg-fizmo-dark-800 border border-fizmo-purple-500/30 rounded-lg text-white"
+              >
+                <option value="">Select Country</option>
+                <option value="US">United States</option>
+                <option value="GB">United Kingdom</option>
+                <option value="CA">Canada</option>
+                <option value="AU">Australia</option>
+                <option value="DE">Germany</option>
+                <option value="IN">India</option>
+                <option value="AE">UAE</option>
+              </select>
             </div>
           </div>
         </div>
@@ -254,21 +302,6 @@ export default function ProfilePage() {
       {selectedTab === "security" && (
         <div className="space-y-6">
           <div className="glassmorphic rounded-xl p-6">
-            <h3 className="text-xl font-bold text-white mb-4">Change Password</h3>
-            <div className="space-y-4">
-              <Input label="Current Password" type="password" />
-              <Input label="New Password" type="password" />
-              <Input label="Confirm New Password" type="password" />
-              <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-                <p className="text-blue-500 text-sm">
-                  Password must be at least 8 characters long and contain uppercase, lowercase, and a number.
-                </p>
-              </div>
-              <Button>Update Password</Button>
-            </div>
-          </div>
-
-          <div className="glassmorphic rounded-xl p-6">
             <h3 className="text-xl font-bold text-white mb-4">Two-Factor Authentication (2FA)</h3>
             <div className="flex items-center justify-between p-4 bg-fizmo-dark-800 rounded-lg mb-4">
               <div>
@@ -276,13 +309,9 @@ export default function ProfilePage() {
                 <p className="text-gray-400 text-sm">Add an extra layer of security to your account</p>
               </div>
               <div className="flex items-center space-x-3">
-                <span
-                  className={`px-3 py-1 rounded text-sm ${
-                    twoFactorEnabled
-                      ? "bg-green-500/20 text-green-500"
-                      : "bg-red-500/20 text-red-500"
-                  }`}
-                >
+                <span className={`px-3 py-1 rounded text-sm ${
+                  twoFactorEnabled ? "bg-green-500/20 text-green-500" : "bg-red-500/20 text-red-500"
+                }`}>
                   {twoFactorEnabled ? "Enabled" : "Disabled"}
                 </span>
                 {!twoFactorEnabled ? (
@@ -297,7 +326,7 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* QR Code Setup Modal */}
+            {/* QR Code Setup */}
             {showQRCode && (
               <div className="p-6 bg-fizmo-dark-800 rounded-lg mb-4 space-y-4">
                 <h4 className="text-lg font-bold text-white">Scan QR Code</h4>
@@ -315,20 +344,14 @@ export default function ProfilePage() {
                   <Input
                     label="Enter Verification Code"
                     placeholder="Enter 6-digit code from your app"
-                    value={verifyToken}
-                    onChange={(e) => setVerifyToken(e.target.value)}
+                    value={verifyTokenInput}
+                    onChange={(e) => setVerifyTokenInput(e.target.value)}
                   />
                   <div className="flex space-x-2">
                     <Button onClick={handleVerify2FA} disabled={loading}>
                       {loading ? "Verifying..." : "Verify & Enable"}
                     </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setShowQRCode(false);
-                        setVerifyToken("");
-                      }}
-                    >
+                    <Button variant="outline" onClick={() => { setShowQRCode(false); setVerifyTokenInput(""); }}>
                       Cancel
                     </Button>
                   </div>
@@ -336,7 +359,7 @@ export default function ProfilePage() {
               </div>
             )}
 
-            {/* Backup Codes Display */}
+            {/* Backup Codes */}
             {backupCodes.length > 0 && (
               <div className="p-6 bg-green-500/10 border border-green-500/30 rounded-lg mb-4">
                 <h4 className="text-lg font-bold text-green-500 mb-2">Backup Codes</h4>
@@ -345,21 +368,13 @@ export default function ProfilePage() {
                   lose your authenticator device.
                 </p>
                 <div className="grid grid-cols-2 gap-2">
-                  {backupCodes.map((code, index) => (
-                    <code
-                      key={index}
-                      className="p-2 bg-fizmo-dark-800 rounded text-fizmo-purple-400 text-sm text-center"
-                    >
+                  {backupCodes.map((code, i) => (
+                    <code key={i} className="p-2 bg-fizmo-dark-800 rounded text-fizmo-purple-400 text-sm text-center">
                       {code}
                     </code>
                   ))}
                 </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="mt-4"
-                  onClick={() => setBackupCodes([])}
-                >
+                <Button size="sm" variant="outline" className="mt-4" onClick={() => setBackupCodes([])}>
                   I've Saved My Codes
                 </Button>
               </div>
@@ -372,147 +387,6 @@ export default function ProfilePage() {
                 </p>
               </div>
             )}
-          </div>
-
-          <div className="glassmorphic rounded-xl p-6">
-            <h3 className="text-xl font-bold text-white mb-4">Active Sessions</h3>
-            <div className="space-y-3">
-              <div className="p-4 bg-fizmo-dark-800 rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <div>
-                    <p className="text-white font-medium">Windows • Chrome</p>
-                    <p className="text-gray-400 text-sm">Los Angeles, USA • 192.168.1.100</p>
-                  </div>
-                  <span className="px-2 py-1 bg-green-500/20 text-green-500 rounded text-xs">
-                    Current Session
-                  </span>
-                </div>
-                <p className="text-gray-500 text-xs">Last active: Just now</p>
-              </div>
-              <div className="p-4 bg-fizmo-dark-800 rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <div>
-                    <p className="text-white font-medium">iPhone • Safari</p>
-                    <p className="text-gray-400 text-sm">Los Angeles, USA • 192.168.1.105</p>
-                  </div>
-                  <button className="px-3 py-1 bg-red-500/20 text-red-500 rounded text-xs hover:bg-red-500/30">
-                    Revoke
-                  </button>
-                </div>
-                <p className="text-gray-500 text-xs">Last active: 2 hours ago</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Preferences Tab */}
-      {selectedTab === "preferences" && (
-        <div className="space-y-6">
-          <div className="glassmorphic rounded-xl p-6">
-            <h3 className="text-xl font-bold text-white mb-4">Display Settings</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Language</label>
-                <select className="w-full px-4 py-3 bg-fizmo-dark-800 border border-fizmo-purple-500/30 rounded-lg text-white">
-                  <option>English</option>
-                  <option>Spanish</option>
-                  <option>French</option>
-                  <option>German</option>
-                  <option>Japanese</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Time Zone</label>
-                <select className="w-full px-4 py-3 bg-fizmo-dark-800 border border-fizmo-purple-500/30 rounded-lg text-white">
-                  <option>PST (GMT-8)</option>
-                  <option>EST (GMT-5)</option>
-                  <option>UTC (GMT+0)</option>
-                  <option>CET (GMT+1)</option>
-                  <option>JST (GMT+9)</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Currency Display</label>
-                <select className="w-full px-4 py-3 bg-fizmo-dark-800 border border-fizmo-purple-500/30 rounded-lg text-white">
-                  <option>USD ($)</option>
-                  <option>EUR (€)</option>
-                  <option>GBP (£)</option>
-                  <option>JPY (¥)</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <div className="glassmorphic rounded-xl p-6">
-            <h3 className="text-xl font-bold text-white mb-4">Notifications</h3>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between p-4 bg-fizmo-dark-800 rounded-lg">
-                <div>
-                  <p className="text-white font-medium">Email Notifications</p>
-                  <p className="text-gray-400 text-sm">Receive updates about your account via email</p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" defaultChecked className="sr-only peer" />
-                  <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-fizmo-purple-500"></div>
-                </label>
-              </div>
-              <div className="flex items-center justify-between p-4 bg-fizmo-dark-800 rounded-lg">
-                <div>
-                  <p className="text-white font-medium">Trade Notifications</p>
-                  <p className="text-gray-400 text-sm">Alerts when your trades are executed</p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" defaultChecked className="sr-only peer" />
-                  <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-fizmo-purple-500"></div>
-                </label>
-              </div>
-              <div className="flex items-center justify-between p-4 bg-fizmo-dark-800 rounded-lg">
-                <div>
-                  <p className="text-white font-medium">Deposit/Withdrawal Notifications</p>
-                  <p className="text-gray-400 text-sm">Updates on your financial transactions</p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" defaultChecked className="sr-only peer" />
-                  <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-fizmo-purple-500"></div>
-                </label>
-              </div>
-              <div className="flex items-center justify-between p-4 bg-fizmo-dark-800 rounded-lg">
-                <div>
-                  <p className="text-white font-medium">Marketing Communications</p>
-                  <p className="text-gray-400 text-sm">Promotions, news, and updates from Fizmo</p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" className="sr-only peer" />
-                  <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-fizmo-purple-500"></div>
-                </label>
-              </div>
-            </div>
-          </div>
-
-          <div className="glassmorphic rounded-xl p-6">
-            <h3 className="text-xl font-bold text-white mb-4">Trading Preferences</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Default Leverage</label>
-                <select className="w-full px-4 py-3 bg-fizmo-dark-800 border border-fizmo-purple-500/30 rounded-lg text-white">
-                  <option>1:50</option>
-                  <option>1:100</option>
-                  <option>1:200</option>
-                  <option>1:500</option>
-                </select>
-              </div>
-              <div className="flex items-center justify-between p-4 bg-fizmo-dark-800 rounded-lg">
-                <div>
-                  <p className="text-white font-medium">Confirm Trades</p>
-                  <p className="text-gray-400 text-sm">Require confirmation before executing trades</p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" defaultChecked className="sr-only peer" />
-                  <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-fizmo-purple-500"></div>
-                </label>
-              </div>
-            </div>
           </div>
         </div>
       )}

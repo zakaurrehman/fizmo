@@ -34,33 +34,26 @@ export async function GET(request: NextRequest) {
     });
 
     // Calculate total assets (sum of all account balances)
-    const totalAssets = accounts.reduce((sum, acc) => sum + acc.balance, 0);
+    const totalAssets = accounts.reduce((sum, acc) => sum + Number(acc.balance), 0);
 
     // Get total deposits
     const deposits = await prisma.deposit.findMany({
       where: {
-        account: {
-          clientId: client.id,
-        },
+        clientId: client.id,
         status: "COMPLETED",
       },
     });
 
-    const totalDeposits = deposits.reduce((sum, dep) => sum + dep.amount, 0);
+    const totalDeposits = deposits.reduce((sum, dep) => sum + Number(dep.amount), 0);
 
-    // Get recent transactions (last 5)
+    // Get recent transactions (last 5 deposits)
     const recentTransactions = await prisma.deposit.findMany({
       where: {
-        account: {
-          clientId: client.id,
-        },
+        clientId: client.id,
       },
       take: 5,
       orderBy: {
         createdAt: "desc",
-      },
-      include: {
-        account: true,
       },
     });
 
@@ -76,15 +69,15 @@ export async function GET(request: NextRequest) {
       recentTransactions: recentTransactions.map((tx) => ({
         id: tx.id,
         type: "Deposit",
-        amount: tx.amount,
-        currency: tx.account.currency,
+        amount: Number(tx.amount),
+        currency: tx.currency,
         status: tx.status,
         date: tx.createdAt,
       })),
       accounts: accounts.map((acc) => ({
         id: acc.id,
         accountId: acc.accountId,
-        balance: acc.balance,
+        balance: Number(acc.balance),
         currency: acc.currency,
         accountType: acc.accountType,
         status: acc.status,

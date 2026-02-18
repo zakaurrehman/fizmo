@@ -142,106 +142,30 @@ export default function DashboardPage() {
       {/* Live Forex Prices */}
       <ForexPrices />
 
-      {/* Tokens & Chain Allocation */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
-        {/* Tokens Table */}
+      {/* Trading Accounts */}
+      {stats?.accounts && stats.accounts.length > 0 && (
         <div className="glassmorphic rounded-xl p-4 lg:p-6">
-          <h3 className="text-lg lg:text-xl font-bold text-white mb-4">Tokens</h3>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 bg-fizmo-dark-800 rounded-lg">
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center text-white font-bold">
-                  B
+          <h3 className="text-lg lg:text-xl font-bold text-white mb-4">Your Trading Accounts</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {stats.accounts.map((acc: any) => (
+              <div key={acc.id} className="p-4 bg-fizmo-dark-800 rounded-lg">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-white font-semibold">{acc.accountId}</span>
+                  <span className={`px-2 py-1 rounded text-xs ${
+                    acc.accountType === "LIVE" ? "bg-green-500/20 text-green-500" : "bg-blue-500/20 text-blue-500"
+                  }`}>
+                    {acc.accountType}
+                  </span>
                 </div>
-                <span className="text-white font-medium">Bitcoin</span>
+                <p className="text-2xl font-bold text-white">{acc.currency} {acc.balance.toLocaleString()}</p>
+                <p className={`text-sm mt-1 ${acc.status === "ACTIVE" ? "text-green-500" : "text-gray-400"}`}>
+                  {acc.status}
+                </p>
               </div>
-              <div className="text-right">
-                <p className="text-white font-bold">0.04321</p>
-                <p className="text-gray-400 text-sm">$2,340.32</p>
-              </div>
-              <button className="px-4 py-1 bg-fizmo-purple-500 text-white rounded hover:bg-fizmo-purple-600 transition-all text-sm">
-                Trade
-              </button>
-            </div>
-
-            <div className="flex items-center justify-between p-3 bg-fizmo-dark-800 rounded-lg">
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold">
-                  E
-                </div>
-                <span className="text-white font-medium">Ethereum</span>
-              </div>
-              <div className="text-right">
-                <p className="text-white font-bold">32.234</p>
-                <p className="text-gray-400 text-sm">$5,340.32</p>
-              </div>
-              <button className="px-4 py-1 bg-fizmo-purple-500 text-white rounded hover:bg-fizmo-purple-600 transition-all text-sm">
-                Trade
-              </button>
-            </div>
+            ))}
           </div>
         </div>
-
-        {/* Chain Allocation */}
-        <div className="glassmorphic rounded-xl p-4 lg:p-6">
-          <h3 className="text-lg lg:text-xl font-bold text-white mb-4">Chain Allocation</h3>
-          <div className="space-y-4">
-            <div>
-              <div className="flex justify-between text-sm mb-2">
-                <span className="text-white">Bitcoin</span>
-                <span className="text-gray-400">$23.38 (71.68%)</span>
-              </div>
-              <div className="h-2 bg-fizmo-dark-800 rounded-full overflow-hidden">
-                <div className="h-full bg-orange-500" style={{ width: "71.68%" }}></div>
-              </div>
-            </div>
-
-            <div>
-              <div className="flex justify-between text-sm mb-2">
-                <span className="text-white">Ethereum</span>
-                <span className="text-gray-400">$23.38 (71.68%)</span>
-              </div>
-              <div className="h-2 bg-fizmo-dark-800 rounded-full overflow-hidden">
-                <div className="h-full bg-blue-500" style={{ width: "71.68%" }}></div>
-              </div>
-            </div>
-
-            <div>
-              <div className="flex justify-between text-sm mb-2">
-                <span className="text-white">Shiba</span>
-                <span className="text-gray-400">$23.38 (71.68%)</span>
-              </div>
-              <div className="h-2 bg-fizmo-dark-800 rounded-full overflow-hidden">
-                <div className="h-full bg-red-500" style={{ width: "71.68%" }}></div>
-              </div>
-            </div>
-
-            <div>
-              <div className="flex justify-between text-sm mb-2">
-                <span className="text-white">Solana</span>
-                <span className="text-gray-400">$23.38 (71.68%)</span>
-              </div>
-              <div className="h-2 bg-fizmo-dark-800 rounded-full overflow-hidden">
-                <div className="h-full bg-purple-500" style={{ width: "71.68%" }}></div>
-              </div>
-            </div>
-
-            <div>
-              <div className="flex justify-between text-sm mb-2">
-                <span className="text-white">Tether</span>
-                <span className="text-gray-400">$23.38 (71.68%)</span>
-              </div>
-              <div className="h-2 bg-fizmo-dark-800 rounded-full overflow-hidden">
-                <div className="h-full bg-green-500" style={{ width: "71.68%" }}></div>
-              </div>
-            </div>
-
-            <button className="w-full mt-4 px-4 py-2 bg-fizmo-purple-500 text-white rounded-lg hover:bg-fizmo-purple-600 transition-all">
-              View All
-            </button>
-          </div>
-        </div>
-      </div>
+      )}
 
       {/* Recent Transactions */}
       <div className="glassmorphic rounded-xl p-4 lg:p-6">
