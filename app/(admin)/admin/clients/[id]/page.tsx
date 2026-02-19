@@ -226,7 +226,7 @@ function AccountsTab({ accounts }: { accounts: any[] }) {
             <tbody>
               {accounts.map((account) => (
                 <tr key={account.id} className="border-b border-gray-800/50 hover:bg-gray-800/30">
-                  <td className="py-3 px-4 text-sm font-medium text-white">{account.mt5Id}</td>
+                  <td className="py-3 px-4 text-sm font-medium text-white">{account.accountId}</td>
                   <td className="py-3 px-4">
                     <span className={`px-2 py-1 rounded text-xs font-medium ${
                       account.accountType === "LIVE" ? "bg-green-500/20 text-green-400" : "bg-blue-500/20 text-blue-400"
@@ -267,7 +267,6 @@ function TransactionsTab({ transactions }: { transactions: any[] }) {
             <thead>
               <tr className="border-b border-gray-800">
                 <th className="text-left py-3 px-4 text-sm font-medium text-gray-400">Date</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-400">Account</th>
                 <th className="text-left py-3 px-4 text-sm font-medium text-gray-400">Type</th>
                 <th className="text-left py-3 px-4 text-sm font-medium text-gray-400">Method</th>
                 <th className="text-right py-3 px-4 text-sm font-medium text-gray-400">Amount</th>
@@ -278,7 +277,6 @@ function TransactionsTab({ transactions }: { transactions: any[] }) {
               {transactions.map((tx) => (
                 <tr key={`${tx.type}-${tx.id}`} className="border-b border-gray-800/50 hover:bg-gray-800/30">
                   <td className="py-3 px-4 text-sm text-gray-400">{new Date(tx.timestamp).toLocaleString()}</td>
-                  <td className="py-3 px-4 text-sm font-medium text-white">{tx.accountId}</td>
                   <td className="py-3 px-4">
                     <span className={`px-2 py-1 rounded text-xs font-medium ${
                       tx.type === "DEPOSIT" ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400"
@@ -324,15 +322,15 @@ function KYCTab({ documents }: { documents: any[] }) {
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium text-white">{doc.documentType}</span>
                 <span className={`px-2 py-1 rounded text-xs font-medium ${
-                  doc.verificationStatus === "VERIFIED" ? "bg-green-500/20 text-green-400" :
-                  doc.verificationStatus === "PENDING" ? "bg-yellow-500/20 text-yellow-400" :
+                  doc.status === "APPROVED" ? "bg-green-500/20 text-green-400" :
+                  doc.status === "PENDING" ? "bg-yellow-500/20 text-yellow-400" :
                   "bg-red-500/20 text-red-400"
                 }`}>
-                  {doc.verificationStatus}
+                  {doc.status}
                 </span>
               </div>
               <div className="text-xs text-gray-400 mb-3">
-                Uploaded: {new Date(doc.uploadedAt).toLocaleDateString()}
+                Uploaded: {new Date(doc.createdAt).toLocaleDateString()}
               </div>
               <Button variant="outline" className="w-full">View Document</Button>
             </div>
