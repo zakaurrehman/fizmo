@@ -42,15 +42,10 @@ export default function DashboardPage() {
     router.push("/login");
   };
 
-  // Mock portfolio performance data - will be replaced with real data later
-  const portfolioData = [
-    { name: "Jan", value: 65000 },
-    { name: "Feb", value: 72000 },
-    { name: "Mar", value: 68000 },
-    { name: "Apr", value: 78000 },
-    { name: "May", value: 82000 },
-    { name: "Jun", value: stats?.totalAssets || 87743 },
-  ];
+  // Real portfolio performance data from API (6-month cumulative deposits)
+  const portfolioData = stats?.portfolioHistory?.length > 0
+    ? stats.portfolioHistory
+    : [{ name: "—", value: 0 }];
 
   return (
     <div className="space-y-6 lg:space-y-8">

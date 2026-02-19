@@ -26,27 +26,6 @@ export default function AdminAMLPage() {
     }
   }
 
-  // TODO: Sanctions screening data - currently mock, needs API integration with compliance provider
-  const sanctionScreening = [
-    {
-      id: "1",
-      clientId: "CL-100248",
-      clientName: "Viktor Reznov",
-      matchType: "Name Match (85%)",
-      listSource: "OFAC SDN List",
-      screenedAt: "2024-12-21 11:10",
-      status: "FALSE_POSITIVE",
-    },
-    {
-      id: "2",
-      clientId: "CL-100260",
-      clientName: "Dmitri Volkov",
-      matchType: "Name Match (92%)",
-      listSource: "EU Sanctions List",
-      screenedAt: "2024-12-21 08:45",
-      status: "UNDER_REVIEW",
-    },
-  ];
 
   return (
     <div className="space-y-6">
@@ -115,7 +94,7 @@ export default function AdminAMLPage() {
                   : "bg-fizmo-dark-800 text-gray-400 hover:text-white"
               }`}
             >
-              High Risk (12)
+              High Risk ({data?.statistics.highRiskAlerts || 0})
             </button>
             <button
               onClick={() => setSelectedTab("all-alerts")}
@@ -293,50 +272,12 @@ export default function AdminAMLPage() {
                 </tr>
               </thead>
               <tbody>
-                {sanctionScreening.map((screen) => (
-                  <tr
-                    key={screen.id}
-                    className="border-b border-fizmo-purple-500/10 hover:bg-fizmo-dark-800 transition-all"
-                  >
-                    <td className="py-3 px-4 text-white text-sm">{screen.screenedAt}</td>
-                    <td className="py-3 px-4 text-sm">
-                      <p className="text-white font-medium">{screen.clientName}</p>
-                      <p className="text-gray-400 text-xs">{screen.clientId}</p>
-                    </td>
-                    <td className="py-3 px-4 text-yellow-500 text-sm font-semibold">
-                      {screen.matchType}
-                    </td>
-                    <td className="py-3 px-4 text-gray-400 text-sm">{screen.listSource}</td>
-                    <td className="py-3 px-4 text-sm">
-                      <span
-                        className={`px-2 py-1 rounded text-xs ${
-                          screen.status === "FALSE_POSITIVE"
-                            ? "bg-green-500/20 text-green-500"
-                            : "bg-red-500/20 text-red-500"
-                        }`}
-                      >
-                        {screen.status.replace("_", " ")}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-sm">
-                      <div className="flex space-x-2">
-                        <button className="px-3 py-1 bg-fizmo-purple-500/20 text-fizmo-purple-400 rounded hover:bg-fizmo-purple-500/30 text-xs">
-                          Review
-                        </button>
-                        {screen.status === "UNDER_REVIEW" && (
-                          <>
-                            <button className="px-3 py-1 bg-green-500/20 text-green-500 rounded hover:bg-green-500/30 text-xs">
-                              Clear
-                            </button>
-                            <button className="px-3 py-1 bg-red-500/20 text-red-500 rounded hover:bg-red-500/30 text-xs">
-                              Block
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                <tr>
+                  <td colSpan={6} className="py-8 text-center text-gray-400">
+                    <p className="mb-2">Sanctions screening requires integration with a compliance provider</p>
+                    <p className="text-xs text-gray-500">Integrate with OFAC, WorldCheck, or EU Sanctions API to enable real-time screening</p>
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -417,29 +358,24 @@ export default function AdminAMLPage() {
         <div className="glassmorphic rounded-xl p-6">
           <h3 className="text-xl font-bold text-white mb-4">Recent Compliance Actions</h3>
           <div className="space-y-3">
-            <div className="p-3 bg-fizmo-dark-800 rounded-lg">
-              <div className="flex justify-between items-start mb-1">
-                <span className="text-white text-sm font-semibold">SAR Filed</span>
-                <span className="text-xs text-gray-400">2024-12-21 10:15</span>
-              </div>
-              <p className="text-gray-400 text-xs">Client CL-100248 - Structuring suspicion</p>
-            </div>
-            <div className="p-3 bg-fizmo-dark-800 rounded-lg">
-              <div className="flex justify-between items-start mb-1">
-                <span className="text-white text-sm font-semibold">Account Frozen</span>
-                <span className="text-xs text-gray-400">2024-12-21 08:30</span>
-              </div>
-              <p className="text-gray-400 text-xs">
-                Client CL-100260 - Sanctions list match pending review
-              </p>
-            </div>
-            <div className="p-3 bg-fizmo-dark-800 rounded-lg">
-              <div className="flex justify-between items-start mb-1">
-                <span className="text-white text-sm font-semibold">Enhanced DD Completed</span>
-                <span className="text-xs text-gray-400">2024-12-20 16:45</span>
-              </div>
-              <p className="text-gray-400 text-xs">Client CL-100245 - Cleared for processing</p>
-            </div>
+            {loading ? (
+              <p className="text-gray-400 text-sm">Loading...</p>
+            ) : data?.alerts && data.alerts.filter((a: any) => a.status === "ESCALATED" || a.status === "CLEARED").length > 0 ? (
+              data.alerts
+                .filter((a: any) => a.status === "ESCALATED" || a.status === "CLEARED")
+                .slice(0, 5)
+                .map((alert: any) => (
+                  <div key={alert.id} className="p-3 bg-fizmo-dark-800 rounded-lg">
+                    <div className="flex justify-between items-start mb-1">
+                      <span className="text-white text-sm font-semibold">{alert.alertType}</span>
+                      <span className="text-xs text-gray-400">{new Date(alert.flaggedAt).toLocaleString()}</span>
+                    </div>
+                    <p className="text-gray-400 text-xs">{alert.clientName} - {alert.description}</p>
+                  </div>
+                ))
+            ) : (
+              <p className="text-gray-400 text-sm text-center py-4">No compliance actions recorded</p>
+            )}
           </div>
         </div>
       </div>

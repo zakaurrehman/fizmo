@@ -57,14 +57,60 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Get portfolio performance (mock APY for now)
-    const apy = 12.3;
+    // Build 6-month portfolio balance history from deposits
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
+    sixMonthsAgo.setDate(1);
+
+    const allDeposits = await prisma.deposit.findMany({
+      where: { clientId: client.id, status: "COMPLETED" },
+      orderBy: { createdAt: "asc" },
+    });
+
+    // Build cumulative monthly totals for last 6 months
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const now = new Date();
+    const portfolioHistory = [];
+    let cumulativeBalance = 0;
+
+    // Sum deposits before the 6-month window as starting balance
+    for (const dep of allDeposits) {
+      if (new Date(dep.createdAt) < sixMonthsAgo) {
+        cumulativeBalance += Number(dep.amount);
+      }
+    }
+
+    for (let i = 5; i >= 0; i--) {
+      const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
+
+      const monthDeposits = allDeposits
+        .filter((d) => {
+          const date = new Date(d.createdAt);
+          return date >= monthDate && date <= monthEnd;
+        })
+        .reduce((sum, d) => sum + Number(d.amount), 0);
+
+      cumulativeBalance += monthDeposits;
+      portfolioHistory.push({
+        name: monthNames[monthDate.getMonth()],
+        value: cumulativeBalance,
+      });
+    }
+
+    // Calculate APY based on deposit growth (simplified)
+    const firstMonthValue = portfolioHistory[0]?.value || 0;
+    const lastMonthValue = portfolioHistory[portfolioHistory.length - 1]?.value || 0;
+    const apy = firstMonthValue > 0
+      ? Number((((lastMonthValue - firstMonthValue) / firstMonthValue) * 100).toFixed(1))
+      : 0;
 
     return NextResponse.json({
       broker: client.broker,
       totalAssets,
       totalDeposits,
       apy,
+      portfolioHistory,
       accountsCount: accounts.length,
       recentTransactions: recentTransactions.map((tx) => ({
         id: tx.id,
