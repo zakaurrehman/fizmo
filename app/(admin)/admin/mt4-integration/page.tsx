@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 
 interface Account {
@@ -19,7 +18,6 @@ interface SyncStatus {
 }
 
 export default function MT4IntegrationPage() {
-  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
@@ -34,7 +32,10 @@ export default function MT4IntegrationPage() {
   const fetchSyncStatus = async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/admin/mt4-sync/status");
+      const token = localStorage.getItem("fizmo_token");
+      const response = await fetch("/api/admin/mt4-sync", {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       if (!response.ok) throw new Error("Failed to fetch sync status");
       const data = await response.json();
       setSyncStatus(data);
@@ -50,9 +51,10 @@ export default function MT4IntegrationPage() {
     try {
       setSyncing(true);
       setError(null);
+      const token = localStorage.getItem("fizmo_token");
       const response = await fetch("/api/admin/mt4-sync", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ syncAll: true }),
       });
 
@@ -77,9 +79,10 @@ export default function MT4IntegrationPage() {
     try {
       setSyncing(true);
       setError(null);
+      const token = localStorage.getItem("fizmo_token");
       const response = await fetch("/api/admin/mt4-sync", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ accountId, mt4Login }),
       });
 

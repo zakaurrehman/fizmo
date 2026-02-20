@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
           id: t.id,
           ticket: t.tradeId,
           symbol: t.symbol,
-          type: "BUY", // MT5 provides this but simplified here
+          type: t.direction || "BUY",
           volume: Number(t.volume),
           openPrice: Number(t.openPrice),
           closePrice: Number(t.closePrice),

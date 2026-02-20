@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/context/AuthContext";
 import { IconType } from "react-icons";
-import { FaChartBar, FaUsers, FaUser, FaBriefcase, FaExchangeAlt, FaDollarSign, FaMoneyBillWave, FaExclamationTriangle, FaHandshake, FaChartLine, FaShieldAlt, FaFileAlt, FaCog, FaHeadset } from "react-icons/fa";
+import { FaChartBar, FaUsers, FaUser, FaBriefcase, FaExchangeAlt, FaDollarSign, FaMoneyBillWave, FaExclamationTriangle, FaHandshake, FaChartLine, FaShieldAlt, FaFileAlt, FaCog, FaHeadset, FaServer } from "react-icons/fa";
 import { Logo } from "@/components/ui/Logo";
 
 interface MenuItem {
@@ -28,6 +28,7 @@ const menuItems: MenuItem[] = [
   { icon: FaShieldAlt, label: "User Roles & Permissions", href: "/admin/roles" },
   { icon: FaFileAlt, label: "Audit Logs", href: "/admin/audit" },
   { icon: FaCog, label: "Settings", href: "/admin/settings" },
+  { icon: FaServer, label: "MT4/MT5 Integration", href: "/admin/mt4-integration" },
 ];
 
 interface AdminSidebarProps {
