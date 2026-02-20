@@ -13,7 +13,9 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // TODO: Add admin role check here
+    if (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     const { id } = params;
 
@@ -143,6 +145,10 @@ export async function PATCH(
     const user = await verifyAuth(request);
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const brokerId = await getBrokerIdFromToken(request);

@@ -42,7 +42,7 @@ export default function AdminKYCPage() {
 
   const fetchKYCDocuments = async () => {
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("fizmo_token");
       const response = await fetch("/api/admin/kyc", {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -69,7 +69,7 @@ export default function AdminKYCPage() {
     setReviewing(true);
 
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("fizmo_token");
       const response = await fetch("/api/admin/kyc", {
         method: "PUT",
         headers: {

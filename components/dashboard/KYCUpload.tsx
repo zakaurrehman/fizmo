@@ -43,7 +43,7 @@ export function KYCUpload({ onUploadComplete }: KYCUploadProps) {
 
   const fetchDocuments = async () => {
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("fizmo_token");
       const response = await fetch("/api/kyc/documents", {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -85,7 +85,7 @@ export function KYCUpload({ onUploadComplete }: KYCUploadProps) {
       formData.append("file", file);
       formData.append("documentType", selectedType);
 
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("fizmo_token");
       const response = await fetch("/api/kyc/upload", {
         method: "POST",
         headers: {
@@ -118,7 +118,7 @@ export function KYCUpload({ onUploadComplete }: KYCUploadProps) {
     if (!confirm("Are you sure you want to delete this document?")) return;
 
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("fizmo_token");
       const response = await fetch(`/api/kyc/documents?id=${documentId}`, {
         method: "DELETE",
         headers: {

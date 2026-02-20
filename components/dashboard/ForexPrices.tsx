@@ -25,7 +25,7 @@ export function ForexPrices() {
   // Fetch prices from API
   const fetchPrices = async () => {
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("fizmo_token");
       const response = await fetch("/api/prices", {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
@@ -50,7 +50,7 @@ export function ForexPrices() {
     setUpdating(true);
     setError(null);
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("fizmo_token");
       const response = await fetch("/api/cron/update-prices", {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });

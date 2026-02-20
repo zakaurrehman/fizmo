@@ -40,6 +40,8 @@ export async function GET(request: NextRequest) {
         user: {
           select: {
             email: true,
+            status: true,
+            kycStatus: true,
             createdAt: true,
           },
         },
@@ -74,11 +76,11 @@ export async function GET(request: NextRequest) {
       email: client.user.email,
       phone: client.phone,
       country: client.country,
-      status: client.status,
-      kycStatus: client.kycStatus,
+      status: client.user.status,
+      kycStatus: client.user.kycStatus,
       createdAt: client.createdAt,
       accountsCount: client._count.accounts,
-      totalBalance: client.accounts.reduce((sum, acc) => sum + acc.balance, 0),
+      totalBalance: client.accounts.reduce((sum, acc) => sum + Number(acc.balance), 0),
       accounts: client.accounts,
     }));
 
@@ -171,7 +173,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Safety checks
-    const totalBalance = client.accounts.reduce((sum, acc) => sum + acc.balance, 0);
+    const totalBalance = client.accounts.reduce((sum, acc) => sum + Number(acc.balance), 0);
     if (totalBalance > 0) {
       return NextResponse.json(
         { error: `Cannot delete client with balance. Current balance: $${totalBalance}` },
@@ -194,19 +196,11 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Soft delete: Update client status to DELETED
-    await prisma.client.update({
-      where: { id: clientId },
-      data: {
-        status: "DELETED",
-      },
-    });
-
-    // Also update user status to DELETED
+    // Soft delete: Suspend the user account
     await prisma.user.update({
       where: { id: client.user.id },
       data: {
-        status: "DELETED",
+        status: "SUSPENDED",
       },
     });
 

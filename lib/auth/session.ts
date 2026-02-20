@@ -38,9 +38,14 @@ export async function createSession(userId: string, email: string, role: string,
  * Delete a session (logout)
  */
 export async function deleteSession(token: string) {
-  await prisma.session.delete({
-    where: { token },
-  });
+  try {
+    await prisma.session.delete({
+      where: { token },
+    });
+  } catch (error) {
+    // Session may already be deleted or not exist
+    console.error("Delete session error:", error);
+  }
 }
 
 /**

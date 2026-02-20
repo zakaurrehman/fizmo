@@ -1,8 +1,7 @@
 /**
  * MT4/MT5 WebAPI Client
  * Handles authentication, connection, and command execution
- * Server: 51.195.4.87:443
- * Credentials: Login: 10048, Password: Api@2026
+ * Configure via environment variables: MT4_SERVER, MT4_PORT, MT4_LOGIN, MT4_PASSWORD
  */
 
 import crypto from "crypto";
@@ -47,10 +46,10 @@ export class MT4WebAPIClient {
   private sessionId: string | null = null;
 
   constructor(
-    server: string = "51.195.4.87",
-    port: number = 443,
-    login: string = "10048",
-    password: string = "Api@2026"
+    server: string = process.env.MT4_SERVER || "",
+    port: number = parseInt(process.env.MT4_PORT || "443"),
+    login: string = process.env.MT4_LOGIN || "",
+    password: string = process.env.MT4_PASSWORD || ""
   ) {
     this.server = server;
     this.port = port;
@@ -72,22 +71,24 @@ export class MT4WebAPIClient {
     body?: string
   ): Promise<string> {
     return new Promise((resolve, reject) => {
+      const headers: Record<string, string | number> = {
+        "User-Agent": "MetaTrader 5 Web API/5.2005 (Windows NT 6.2; x64)",
+        Connection: "keep-alive",
+        "Content-Type": "application/x-www-form-urlencoded",
+      };
+
+      if (body) {
+        headers["Content-Length"] = body.length;
+      }
+
       const options = {
         hostname: this.server,
         port: this.port,
         path,
         method,
         agent: this.agent,
-        headers: {
-          "User-Agent": "MetaTrader 5 Web API/5.2005 (Windows NT 6.2; x64)",
-          Connection: "keep-alive",
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
+        headers,
       };
-
-      if (body) {
-        options.headers["Content-Length"] = body.length;
-      }
 
       const req = https.request(options, (res) => {
         let data = "";

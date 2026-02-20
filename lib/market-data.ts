@@ -3,7 +3,7 @@
  * Fetches real-time forex prices from Alpha Vantage API
  */
 
-const ALPHA_VANTAGE_API_KEY = process.env.ALPHA_VANTAGE_API_KEY;
+const ALPHA_VANTAGE_API_KEY = process.env.ALPHA_VANTAGE_API_KEY || "";
 const BASE_URL = "https://www.alphavantage.co/query";
 
 export interface ForexQuote {
@@ -32,6 +32,10 @@ export async function getForexRate(
   toCurrency: string
 ): Promise<ForexQuote | null> {
   try {
+    if (!ALPHA_VANTAGE_API_KEY) {
+      console.error("ALPHA_VANTAGE_API_KEY is not configured");
+      return null;
+    }
     const url = `${BASE_URL}?function=CURRENCY_EXCHANGE_RATE&from_currency=${fromCurrency}&to_currency=${toCurrency}&apikey=${ALPHA_VANTAGE_API_KEY}`;
 
     const response = await fetch(url);
