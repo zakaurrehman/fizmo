@@ -9,6 +9,8 @@ import { FaTrash } from "react-icons/fa";
 export default function AdminClientsPage() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All Status");
+  const [kycFilter, setKycFilter] = useState("All KYC Status");
   const [clients, setClients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingClientId, setDeletingClientId] = useState<string | null>(null);
@@ -71,12 +73,40 @@ export default function AdminClientsPage() {
     }
   }
 
-  const filteredClients = clients.filter(
-    (client) =>
+  const filteredClients = clients.filter((client) => {
+    const matchesSearch =
       client.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       client.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      client.email?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+      client.email?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus =
+      statusFilter === "All Status" || client.status === statusFilter.toUpperCase();
+    const matchesKyc =
+      kycFilter === "All KYC Status" ||
+      client.kycStatus === kycFilter.toUpperCase().replace(" ", "_");
+    return matchesSearch && matchesStatus && matchesKyc;
+  });
+
+  function handleExportCSV() {
+    const headers = ["Client ID", "First Name", "Last Name", "Email", "Balance", "Status", "KYC Status", "Accounts"];
+    const rows = filteredClients.map((c) => [
+      `CL-${c.id.slice(0, 6)}`,
+      c.firstName || "",
+      c.lastName || "",
+      c.email || "",
+      c.totalBalance?.toFixed(2) || "0.00",
+      c.status || "",
+      c.kycStatus || "",
+      c.accountsCount || 0,
+    ]);
+    const csv = [headers, ...rows].map((r) => r.join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `clients-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   return (
     <div className="space-y-6">
@@ -86,7 +116,7 @@ export default function AdminClientsPage() {
           <h1 className="text-3xl font-bold text-white mb-2">Client Management</h1>
           <p className="text-gray-400">Manage and monitor all client accounts</p>
         </div>
-        <Button>+ Add New Client</Button>
+        <Button onClick={() => router.push("/admin/clients/new")}>+ Add New Client</Button>
       </div>
 
       {/* Search and Filters */}
@@ -99,19 +129,27 @@ export default function AdminClientsPage() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <select className="px-4 py-3 bg-fizmo-dark-800 border border-fizmo-purple-500/30 rounded-lg text-white">
+          <select
+            className="px-4 py-3 bg-fizmo-dark-800 border border-fizmo-purple-500/30 rounded-lg text-white"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
             <option>All Status</option>
             <option>Active</option>
             <option>Inactive</option>
             <option>Suspended</option>
           </select>
-          <select className="px-4 py-3 bg-fizmo-dark-800 border border-fizmo-purple-500/30 rounded-lg text-white">
+          <select
+            className="px-4 py-3 bg-fizmo-dark-800 border border-fizmo-purple-500/30 rounded-lg text-white"
+            value={kycFilter}
+            onChange={(e) => setKycFilter(e.target.value)}
+          >
             <option>All KYC Status</option>
             <option>Approved</option>
             <option>Pending</option>
             <option>Rejected</option>
           </select>
-          <Button variant="outline">Export CSV</Button>
+          <Button variant="outline" onClick={handleExportCSV}>Export CSV</Button>
         </div>
       </div>
 
@@ -195,7 +233,12 @@ export default function AdminClientsPage() {
                         >
                           View
                         </button>
-                        <button className="text-blue-400 hover:text-blue-300">Edit</button>
+                        <button
+                          onClick={() => router.push(`/admin/clients/${client.id}`)}
+                          className="text-blue-400 hover:text-blue-300"
+                        >
+                          Edit
+                        </button>
                         <button
                           onClick={() =>
                             handleDeleteClient(
@@ -219,26 +262,11 @@ export default function AdminClientsPage() {
           </table>
         </div>
 
-        {/* Pagination */}
-        <div className="flex items-center justify-between mt-6 pt-4 border-t border-fizmo-purple-500/20">
+        {/* Results count */}
+        <div className="mt-6 pt-4 border-t border-fizmo-purple-500/20">
           <p className="text-gray-400 text-sm">
             Showing {filteredClients.length} of {clients.length} clients
           </p>
-          <div className="flex space-x-2">
-            <button className="px-3 py-1 bg-fizmo-dark-800 text-white rounded hover:bg-fizmo-dark-700">
-              Previous
-            </button>
-            <button className="px-3 py-1 bg-fizmo-purple-500 text-white rounded">1</button>
-            <button className="px-3 py-1 bg-fizmo-dark-800 text-white rounded hover:bg-fizmo-dark-700">
-              2
-            </button>
-            <button className="px-3 py-1 bg-fizmo-dark-800 text-white rounded hover:bg-fizmo-dark-700">
-              3
-            </button>
-            <button className="px-3 py-1 bg-fizmo-dark-800 text-white rounded hover:bg-fizmo-dark-700">
-              Next
-            </button>
-          </div>
         </div>
       </div>
     </div>

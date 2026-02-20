@@ -44,7 +44,10 @@ export default function BankAccountsPage() {
 
   async function fetchBankAccounts() {
     try {
-      const response = await fetch("/api/bank-accounts");
+      const token = localStorage.getItem("fizmo_token");
+      const response = await fetch("/api/bank-accounts", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (response.ok) {
         const data = await response.json();
         setBankAccounts(data.bankAccounts || []);
@@ -69,9 +72,10 @@ export default function BankAccountsPage() {
 
     setSubmitting(true);
     try {
+      const token = localStorage.getItem("fizmo_token");
       const response = await fetch("/api/bank-accounts", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(formData),
       });
 
@@ -108,8 +112,10 @@ export default function BankAccountsPage() {
     }
 
     try {
+      const token = localStorage.getItem("fizmo_token");
       const response = await fetch(`/api/bank-accounts?id=${id}`, {
         method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (response.ok) {

@@ -28,9 +28,11 @@ export default function WithdrawPage() {
 
   async function fetchData() {
     try {
+      const token = localStorage.getItem("fizmo_token");
+      const headers = { Authorization: `Bearer ${token}` };
       const [accountsRes, withdrawalsRes] = await Promise.all([
-        fetch("/api/accounts"),
-        fetch("/api/withdrawals"),
+        fetch("/api/accounts", { headers }),
+        fetch("/api/withdrawals", { headers }),
       ]);
 
       if (accountsRes.ok) {
@@ -66,9 +68,10 @@ export default function WithdrawPage() {
 
     setSubmitting(true);
     try {
+      const token = localStorage.getItem("fizmo_token");
       const response = await fetch("/api/withdrawals", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           accountId: selectedAccount,
           amount: parseFloat(amount),

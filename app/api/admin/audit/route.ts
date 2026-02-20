@@ -15,7 +15,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Broker context not found" }, { status: 400 });
     }
 
-    // TODO: Add admin role check here
+    if (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     // Get query parameters
     const { searchParams } = new URL(request.url);

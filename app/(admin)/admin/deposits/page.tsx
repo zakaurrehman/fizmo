@@ -15,7 +15,10 @@ export default function AdminDepositsPage() {
 
   async function fetchDeposits() {
     try {
-      const response = await fetch("/api/admin/deposits");
+      const token = localStorage.getItem("fizmo_token");
+      const response = await fetch("/api/admin/deposits", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (response.ok) {
         const data = await response.json();
         setDeposits(data.deposits || []);
@@ -34,7 +37,7 @@ export default function AdminDepositsPage() {
     try {
       const response = await fetch("/api/admin/deposits", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("fizmo_token")}` },
         body: JSON.stringify({ depositId, status: "COMPLETED" }),
       });
 
@@ -60,7 +63,7 @@ export default function AdminDepositsPage() {
     try {
       const response = await fetch("/api/admin/deposits", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("fizmo_token")}` },
         body: JSON.stringify({ depositId, status: "REJECTED" }),
       });
 
@@ -77,6 +80,36 @@ export default function AdminDepositsPage() {
     } finally {
       setProcessing(null);
     }
+  }
+
+  function handleExportCSV() {
+    const headers = ["Date", "Client", "Email", "Account", "Amount", "Method", "Status"];
+    const rows = filteredDeposits.map((d) => [
+      new Date(d.createdAt).toLocaleString(),
+      `${d.account?.client?.firstName || ""} ${d.account?.client?.lastName || ""}`.trim(),
+      d.account?.client?.user?.email || "",
+      d.account?.accountId || "",
+      d.amount?.toFixed(2) || "0.00",
+      d.paymentMethod || "",
+      d.status || "",
+    ]);
+    const csv = [headers, ...rows].map((r) => r.join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `deposits-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function handleReconcile() {
+    const pending = deposits.filter((d) => d.status === "PENDING").length;
+    alert(`Reconciliation check:\n- ${pending} pending deposit(s) require review.\n- Use Approve/Reject buttons on each deposit to reconcile.`);
+  }
+
+  function handleManualDeposit() {
+    alert("Manual Deposit:\nTo create a manual deposit, approve a pending deposit or use the API directly at POST /api/admin/deposits with the required parameters.");
   }
 
   // Filter deposits based on selected tab
@@ -108,8 +141,8 @@ export default function AdminDepositsPage() {
           <p className="text-gray-400">Monitor and manage all client deposits</p>
         </div>
         <div className="flex space-x-3">
-          <Button variant="outline">Manual Deposit</Button>
-          <Button>Reconcile</Button>
+          <Button variant="outline" onClick={handleManualDeposit}>Manual Deposit</Button>
+          <Button onClick={handleReconcile}>Reconcile</Button>
         </div>
       </div>
 
@@ -191,7 +224,7 @@ export default function AdminDepositsPage() {
             </button>
           </div>
           <div className="flex space-x-2">
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={handleExportCSV}>
               Export
             </Button>
           </div>

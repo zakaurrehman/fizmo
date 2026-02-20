@@ -117,6 +117,14 @@ export async function POST(request: NextRequest) {
         client.accounts[0].accountId,
         client.firstName || undefined
       );
+    } else if (client.accounts.length > 0) {
+      // For live accounts, send pending confirmation email
+      await sendDepositConfirmation(
+        user.email,
+        amountNum,
+        client.accounts[0].accountId,
+        client.firstName || undefined
+      );
     }
 
     // Send admin alert for all deposits

@@ -7,6 +7,7 @@ export default function AdminAMLPage() {
   const [selectedTab, setSelectedTab] = useState("high-risk");
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [processing, setProcessing] = useState<string | null>(null);
 
   useEffect(() => {
     fetchAMLData();
@@ -14,7 +15,10 @@ export default function AdminAMLPage() {
 
   async function fetchAMLData() {
     try {
-      const response = await fetch("/api/admin/aml");
+      const token = localStorage.getItem("fizmo_token");
+      const response = await fetch("/api/admin/aml", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (response.ok) {
         const amlData = await response.json();
         setData(amlData);
@@ -24,6 +28,89 @@ export default function AdminAMLPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleInvestigate(alertId: string) {
+    setProcessing(alertId);
+    try {
+      const token = localStorage.getItem("fizmo_token");
+      const response = await fetch("/api/admin/aml", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ alertId, status: "UNDER_REVIEW" }),
+      });
+      if (response.ok) {
+        await fetchAMLData();
+      } else {
+        const err = await response.json();
+        alert(err.error || "Failed to update alert");
+      }
+    } catch {
+      alert("Failed to update alert");
+    } finally {
+      setProcessing(null);
+    }
+  }
+
+  async function handleClear(alertId: string) {
+    if (!confirm("Mark this alert as cleared? This indicates the activity was reviewed and found to be legitimate.")) return;
+    setProcessing(alertId);
+    try {
+      const token = localStorage.getItem("fizmo_token");
+      const response = await fetch("/api/admin/aml", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ alertId, status: "CLEARED" }),
+      });
+      if (response.ok) {
+        await fetchAMLData();
+      } else {
+        const err = await response.json();
+        alert(err.error || "Failed to clear alert");
+      }
+    } catch {
+      alert("Failed to clear alert");
+    } finally {
+      setProcessing(null);
+    }
+  }
+
+  function handleExportCSV() {
+    const alerts = data?.alerts || [];
+    const headers = ["Flagged At", "Client", "Client ID", "Risk Level", "Alert Type", "Amount", "Currency", "Description", "Status"];
+    const rows = alerts.map((a: any) => [
+      new Date(a.flaggedAt).toLocaleString(),
+      a.clientName,
+      a.clientId,
+      a.riskLevel,
+      a.alertType,
+      a.amount?.toFixed(2) || "0.00",
+      a.currency,
+      (a.description || "").replace(/,/g, ";"),
+      a.status,
+    ]);
+    const csv = [headers, ...rows].map((r: any[]) => r.join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `aml-alerts-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function handleGenerateSAR() {
+    const escalated = (data?.alerts || []).filter((a: any) => a.status === "ESCALATED");
+    if (escalated.length === 0) {
+      alert("No escalated alerts found.\nEscalate high-risk alerts before generating a SAR report.");
+      return;
+    }
+    alert(`SAR Report Summary:\n- ${escalated.length} escalated alert(s) require SAR filing.\n- File SARs via FinCEN BSA E-Filing System within 30 days of detection.\n- Client IDs: ${escalated.map((a: any) => a.clientId).join(", ")}`);
+  }
+
+  function handleRunScreening() {
+    alert("Sanctions Screening:\nScreening requires integration with OFAC, WorldCheck, or EU Sanctions API.\nSwitch to the Sanctions Screening tab to view existing results.");
+    setSelectedTab("sanctions");
   }
 
 
@@ -38,8 +125,8 @@ export default function AdminAMLPage() {
           </p>
         </div>
         <div className="flex space-x-3">
-          <Button variant="outline">Generate SAR Report</Button>
-          <Button>Run Screening</Button>
+          <Button variant="outline" onClick={handleGenerateSAR}>Generate SAR Report</Button>
+          <Button onClick={handleRunScreening}>Run Screening</Button>
         </div>
       </div>
 
@@ -135,7 +222,7 @@ export default function AdminAMLPage() {
               <option>Geographic Risk</option>
               <option>Rapid Turnover</option>
             </select>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={handleExportCSV}>
               Export
             </Button>
           </div>
@@ -227,12 +314,20 @@ export default function AdminAMLPage() {
                       </td>
                       <td className="py-3 px-4 text-sm">
                         <div className="flex space-x-2">
-                          <button className="px-3 py-1 bg-fizmo-purple-500/20 text-fizmo-purple-400 rounded hover:bg-fizmo-purple-500/30 text-xs">
-                            Investigate
+                          <button
+                            onClick={() => handleInvestigate(alert.id)}
+                            disabled={processing === alert.id}
+                            className="px-3 py-1 bg-fizmo-purple-500/20 text-fizmo-purple-400 rounded hover:bg-fizmo-purple-500/30 text-xs disabled:opacity-50"
+                          >
+                            {processing === alert.id ? "..." : "Investigate"}
                           </button>
                           {alert.status === "UNDER_REVIEW" && (
-                            <button className="px-3 py-1 bg-green-500/20 text-green-500 rounded hover:bg-green-500/30 text-xs">
-                              Clear
+                            <button
+                              onClick={() => handleClear(alert.id)}
+                              disabled={processing === alert.id}
+                              className="px-3 py-1 bg-green-500/20 text-green-500 rounded hover:bg-green-500/30 text-xs disabled:opacity-50"
+                            >
+                              {processing === alert.id ? "..." : "Clear"}
                             </button>
                           )}
                         </div>

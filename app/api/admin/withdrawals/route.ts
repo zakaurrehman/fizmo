@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth, getBrokerIdFromToken } from "@/lib/auth";
 import { notifyWithdrawal } from "@/lib/notifications";
+import { sendWithdrawalConfirmation } from "@/lib/email";
+import { auditWithdrawalChange } from "@/lib/audit";
 
 // GET - Fetch all withdrawals (Admin only)
 export async function GET(request: NextRequest) {
@@ -11,12 +13,27 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    if (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const brokerId = await getBrokerIdFromToken(request);
     if (!brokerId) {
       return NextResponse.json({ error: "Broker context not found" }, { status: 400 });
     }
 
-    // Get all withdrawals within this broker
+    // Get pagination params
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = parseInt(searchParams.get("limit") || "50");
+    const skip = (page - 1) * limit;
+
+    // Get total count
+    const total = await prisma.withdrawal.count({
+      where: { brokerId },
+    });
+
+    // Get paginated withdrawals
     const withdrawals = await prisma.withdrawal.findMany({
       where: {
         brokerId,
@@ -37,9 +54,21 @@ export async function GET(request: NextRequest) {
       orderBy: {
         createdAt: "desc",
       },
+      skip,
+      take: limit,
     });
 
-    return NextResponse.json({ withdrawals });
+    const totalPages = Math.ceil(total / limit);
+
+    return NextResponse.json({
+      withdrawals,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+      },
+    });
   } catch (error: any) {
     console.error("Admin withdrawals fetch error:", error);
     return NextResponse.json(
@@ -55,6 +84,10 @@ export async function PATCH(request: NextRequest) {
     const user = await verifyAuth(request);
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const brokerId = await getBrokerIdFromToken(request);
@@ -126,6 +159,27 @@ export async function PATCH(request: NextRequest) {
         },
       });
     }
+
+    // Send confirmation email to user
+    if (withdrawal.client.accounts.length > 0) {
+      await sendWithdrawalConfirmation(
+        withdrawal.client.user.email,
+        Number(withdrawal.amount),
+        withdrawal.client.accounts[0].accountId,
+        status,
+        withdrawal.client.firstName || undefined
+      );
+    }
+
+    // Log audit trail
+    await auditWithdrawalChange(
+      brokerId,
+      user.id,
+      withdrawalId,
+      status as "COMPLETED" | "REJECTED",
+      Number(withdrawal.amount),
+      withdrawal.client.user.email
+    );
 
     // Send notification to user
     await notifyWithdrawal(

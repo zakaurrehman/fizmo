@@ -21,7 +21,10 @@ export default function AdminIBPage() {
   async function fetchIBs() {
     setLoading(true);
     try {
-      const response = await fetch("/api/admin/ib");
+      const token = localStorage.getItem("fizmo_token");
+      const response = await fetch("/api/admin/ib", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (response.ok) {
         const data = await response.json();
         setIbs(data.ibs || []);
@@ -35,7 +38,10 @@ export default function AdminIBPage() {
 
   async function fetchPayouts() {
     try {
-      const response = await fetch("/api/admin/ib/payouts");
+      const token = localStorage.getItem("fizmo_token");
+      const response = await fetch("/api/admin/ib/payouts", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (response.ok) {
         const data = await response.json();
         setPayouts(data.payouts || []);
@@ -43,6 +49,60 @@ export default function AdminIBPage() {
     } catch (error) {
       console.error("Failed to fetch payouts:", error);
     }
+  }
+
+  function handleExportCSV() {
+    const headers = ["IB ID", "Name", "Email", "Tier", "Commission Rate", "Active Clients", "Total Clients", "Volume (30d)", "Pending Commission", "Status"];
+    const rows = ibs.map((ib) => [
+      ib.ibId,
+      ib.name,
+      ib.email,
+      ib.tier,
+      ib.commissionRate,
+      ib.activeClients,
+      ib.clientsReferred,
+      ib.totalVolume?.toFixed(2) || "0.00",
+      ib.pendingCommission?.toFixed(2) || "0.00",
+      ib.status,
+    ]);
+    const csv = [headers, ...rows].map((r) => r.join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `ibs-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function handleProcessPayouts() {
+    const pending = payouts.filter((p) => p.status === "PENDING");
+    if (pending.length === 0) {
+      alert("No pending payouts to process.");
+      return;
+    }
+    setSelectedTab("payouts");
+    alert(`${pending.length} pending payout(s) found.\nSwitch to the Commission Payouts tab and use the Process Payment button on each payout.`);
+  }
+
+  function handleReceiptDownload(payout: any) {
+    const lines = [
+      `COMMISSION PAYOUT RECEIPT`,
+      `========================`,
+      `IB: ${payout.ibName}`,
+      `IB ID: ${payout.ibId}`,
+      `Period: ${payout.period}`,
+      `Amount: $${payout.amount?.toLocaleString()}`,
+      `Status: ${payout.status}`,
+      `Paid At: ${payout.paidAt || "N/A"}`,
+    ];
+    const blob = new Blob([lines.join("\n")], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `receipt-${payout.ibId}-${payout.period}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   async function seedIBs() {
@@ -197,7 +257,7 @@ export default function AdminIBPage() {
           <p className="text-gray-400">Manage Introducing Brokers and commission structures</p>
         </div>
         <div className="flex space-x-3">
-          <Button variant="outline">Process Payouts</Button>
+          <Button variant="outline" onClick={handleProcessPayouts}>Process Payouts</Button>
           <Button onClick={() => { setIBForm({ name: "", email: "", tier: "BRONZE", commissionRate: "" }); setEditingIB(null); setShowCreateModal(true); }}>+ Add New IB</Button>
         </div>
       </div>
@@ -290,7 +350,7 @@ export default function AdminIBPage() {
               <option>Silver</option>
               <option>Bronze</option>
             </select>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={handleExportCSV}>
               Export
             </Button>
           </div>
@@ -370,7 +430,10 @@ export default function AdminIBPage() {
                       </td>
                       <td className="py-3 px-4 text-sm">
                         <div className="flex space-x-2">
-                          <button className="text-fizmo-purple-400 hover:text-fizmo-purple-300">
+                          <button
+                            onClick={() => alert(`IB Details:\nName: ${ib.name}\nEmail: ${ib.email}\nTier: ${ib.tier}\nCommission: ${ib.commissionRate}%\nActive Clients: ${ib.activeClients}\nTotal Referred: ${ib.clientsReferred}\nPending Commission: $${ib.pendingCommission?.toLocaleString()}`)}
+                            className="text-fizmo-purple-400 hover:text-fizmo-purple-300"
+                          >
                             View
                           </button>
                           <button onClick={() => openEditModal(ib)} className="text-blue-400 hover:text-blue-300">Edit</button>
@@ -473,7 +536,10 @@ export default function AdminIBPage() {
                           Process Payment
                         </button>
                       ) : (
-                        <button className="text-fizmo-purple-400 hover:text-fizmo-purple-300">
+                        <button
+                          onClick={() => handleReceiptDownload(payout)}
+                          className="text-fizmo-purple-400 hover:text-fizmo-purple-300"
+                        >
                           Receipt
                         </button>
                       )}

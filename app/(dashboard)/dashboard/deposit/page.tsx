@@ -42,9 +42,11 @@ function DepositContent() {
 
   async function fetchData() {
     try {
+      const token = localStorage.getItem("fizmo_token");
+      const headers = { Authorization: `Bearer ${token}` };
       const [accountsRes, depositsRes] = await Promise.all([
-        fetch("/api/accounts"),
-        fetch("/api/deposits"),
+        fetch("/api/accounts", { headers }),
+        fetch("/api/deposits", { headers }),
       ]);
 
       if (accountsRes.ok) {

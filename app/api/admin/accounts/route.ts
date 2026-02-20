@@ -15,9 +15,22 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Broker context not found" }, { status: 400 });
     }
 
-    // TODO: Add admin role check here
+    if (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
-    // Get all accounts within this broker
+    // Get pagination params
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = parseInt(searchParams.get("limit") || "50");
+    const skip = (page - 1) * limit;
+
+    // Get total count
+    const total = await prisma.account.count({
+      where: { brokerId },
+    });
+
+    // Get paginated accounts
     const accounts = await prisma.account.findMany({
       where: {
         brokerId,
@@ -44,17 +57,21 @@ export async function GET(request: NextRequest) {
       orderBy: {
         createdAt: "desc",
       },
+      skip,
+      take: limit,
     });
 
     // Calculate account statistics
     const stats = {
-      totalAccounts: accounts.length,
+      totalAccounts: total,
       activeAccounts: accounts.filter((a) => a.status === "ACTIVE").length,
       demoAccounts: accounts.filter((a) => a.accountType === "DEMO").length,
       liveAccounts: accounts.filter((a) => a.accountType === "LIVE").length,
       totalBalance: accounts.reduce((sum, a) => sum + Number(a.balance), 0),
       totalEquity: accounts.reduce((sum, a) => sum + Number(a.equity), 0),
     };
+
+    const totalPages = Math.ceil(total / limit);
 
     // Format accounts for response
     const accountsData = accounts.map((account) => ({
@@ -78,6 +95,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       accounts: accountsData,
       stats,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+      },
     });
   } catch (error: any) {
     console.error("Admin accounts fetch error:", error);
@@ -94,6 +117,10 @@ export async function POST(request: NextRequest) {
     const user = await verifyAuth(request);
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const brokerId = await getBrokerIdFromToken(request);
@@ -156,6 +183,10 @@ export async function PATCH(request: NextRequest) {
     const user = await verifyAuth(request);
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const brokerId = await getBrokerIdFromToken(request);

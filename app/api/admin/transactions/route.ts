@@ -15,49 +15,68 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Broker context not found" }, { status: 400 });
     }
 
-    // TODO: Add admin role check here
+    if (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
-    // Get all deposits within this broker
-    const deposits = await prisma.deposit.findMany({
-      where: { brokerId },
-      include: {
-        account: {
-          include: {
-            client: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
+    // Get pagination params
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = parseInt(searchParams.get("limit") || "50");
+    const skip = (page - 1) * limit;
+
+    // Get total count of all transactions (deposits + withdrawals)
+    const [depositCount, withdrawalCount] = await Promise.all([
+      prisma.deposit.count({ where: { brokerId } }),
+      prisma.withdrawal.count({ where: { brokerId } }),
+    ]);
+    const total = depositCount + withdrawalCount;
+
+    // Get paginated deposits and withdrawals
+    const [deposits, withdrawals] = await Promise.all([
+      prisma.deposit.findMany({
+        where: { brokerId },
+        include: {
+          account: {
+            include: {
+              client: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                },
               },
             },
           },
         },
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
-
-    // Get all withdrawals within this broker
-    const withdrawals = await prisma.withdrawal.findMany({
-      where: { brokerId },
-      include: {
-        account: {
-          include: {
-            client: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
+        orderBy: {
+          createdAt: "desc",
+        },
+        take: limit,
+        skip,
+      }),
+      prisma.withdrawal.findMany({
+        where: { brokerId },
+        include: {
+          account: {
+            include: {
+              client: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                },
               },
             },
           },
         },
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+        orderBy: {
+          createdAt: "desc",
+        },
+        take: limit,
+        skip,
+      }),
+    ]);
 
     // Combine and format transactions
     const transactions = [
@@ -95,7 +114,7 @@ export async function GET(request: NextRequest) {
 
     // Calculate statistics
     const stats = {
-      totalTransactions: transactions.length,
+      totalTransactions: total,
       totalDeposits: deposits.reduce((sum, d) => sum + d.amount, 0),
       totalWithdrawals: withdrawals.reduce((sum, w) => sum + w.amount, 0),
       pendingCount: transactions.filter((t) => t.status === "PENDING").length,
@@ -103,9 +122,17 @@ export async function GET(request: NextRequest) {
       rejectedCount: transactions.filter((t) => t.status === "REJECTED").length,
     };
 
+    const totalPages = Math.ceil(total / limit);
+
     return NextResponse.json({
       transactions,
       stats,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+      },
     });
   } catch (error: any) {
     console.error("Admin transactions fetch error:", error);

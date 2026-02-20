@@ -17,7 +17,10 @@ export default function AdminAuditPage() {
   async function fetchAuditLogs() {
     setLoading(true);
     try {
-      const response = await fetch(`/api/admin/audit?category=${selectedFilter}`);
+      const token = localStorage.getItem("fizmo_token");
+      const response = await fetch(`/api/admin/audit?category=${selectedFilter}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (response.ok) {
         const auditData = await response.json();
         setData(auditData);
@@ -27,6 +30,34 @@ export default function AdminAuditPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleExportLogs() {
+    const headers = ["Timestamp", "User", "User ID", "Action", "Entity", "Entity ID", "Details", "IP Address", "Severity"];
+    const rows = filteredLogs.map((log: any) => [
+      new Date(log.timestamp).toLocaleString(),
+      log.user || "",
+      log.userId || "",
+      log.action || "",
+      log.entity || "",
+      log.entityId || "",
+      (log.details || "").replace(/,/g, ";"),
+      log.ipAddress || "",
+      log.severity || "",
+    ]);
+    const csv = [headers, ...rows].map((r: any[]) => r.join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `audit-logs-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function handleClearFilters() {
+    setSearchTerm("");
+    setSelectedFilter("all");
   }
 
   const auditLogs = data?.logs || [];
@@ -45,8 +76,8 @@ export default function AdminAuditPage() {
           <p className="text-gray-400">Complete system activity and security audit trail</p>
         </div>
         <div className="flex space-x-3">
-          <Button variant="outline">Export Logs</Button>
-          <Button>Advanced Search</Button>
+          <Button variant="outline" onClick={handleExportLogs}>Export Logs</Button>
+          <Button onClick={handleClearFilters}>Clear Filters</Button>
         </div>
       </div>
 
@@ -118,7 +149,7 @@ export default function AdminAuditPage() {
             <option>Last 30 Days</option>
             <option>Custom Range</option>
           </select>
-          <Button variant="outline">Clear Filters</Button>
+          <Button variant="outline" onClick={handleClearFilters}>Clear Filters</Button>
         </div>
       </div>
 
@@ -270,26 +301,11 @@ export default function AdminAuditPage() {
           </table>
         </div>
 
-        {/* Pagination */}
-        <div className="flex items-center justify-between mt-6 pt-4 border-t border-fizmo-purple-500/20">
+        {/* Results count */}
+        <div className="mt-6 pt-4 border-t border-fizmo-purple-500/20">
           <p className="text-gray-400 text-sm">
             Showing {filteredLogs.length} of {data?.total || 0} events
           </p>
-          <div className="flex space-x-2">
-            <button className="px-3 py-1 bg-fizmo-dark-800 text-white rounded hover:bg-fizmo-dark-700">
-              Previous
-            </button>
-            <button className="px-3 py-1 bg-fizmo-purple-500 text-white rounded">1</button>
-            <button className="px-3 py-1 bg-fizmo-dark-800 text-white rounded hover:bg-fizmo-dark-700">
-              2
-            </button>
-            <button className="px-3 py-1 bg-fizmo-dark-800 text-white rounded hover:bg-fizmo-dark-700">
-              3
-            </button>
-            <button className="px-3 py-1 bg-fizmo-dark-800 text-white rounded hover:bg-fizmo-dark-700">
-              Next
-            </button>
-          </div>
         </div>
       </div>
 
@@ -320,36 +336,49 @@ export default function AdminAuditPage() {
         </div>
 
         <div className="glassmorphic rounded-xl p-6">
-          <h3 className="text-xl font-bold text-white mb-4">Security Alerts (24h)</h3>
-          <div className="space-y-3">
-            <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
-              <div className="flex justify-between items-start mb-1">
-                <span className="text-red-500 font-semibold text-sm">Multiple Failed Logins</span>
-                <span className="px-2 py-1 bg-red-500/20 text-red-500 rounded text-xs">CRITICAL</span>
-              </div>
-              <p className="text-gray-400 text-xs">
-                5 failed login attempts from IP 45.142.214.85 in 10 minutes
-              </p>
+          <h3 className="text-xl font-bold text-white mb-4">Critical & High Events</h3>
+          {loading ? (
+            <p className="text-gray-400 text-center">Loading...</p>
+          ) : (
+            <div className="space-y-3">
+              {auditLogs
+                .filter((log: any) => log.severity === "CRITICAL" || log.severity === "HIGH")
+                .slice(0, 5)
+                .map((log: any, idx: number) => (
+                  <div
+                    key={idx}
+                    className={`p-3 rounded-lg border ${
+                      log.severity === "CRITICAL"
+                        ? "bg-red-500/10 border-red-500/30"
+                        : "bg-yellow-500/10 border-yellow-500/30"
+                    }`}
+                  >
+                    <div className="flex justify-between items-start mb-1">
+                      <span
+                        className={`font-semibold text-sm ${
+                          log.severity === "CRITICAL" ? "text-red-500" : "text-yellow-500"
+                        }`}
+                      >
+                        {log.action}
+                      </span>
+                      <span
+                        className={`px-2 py-1 rounded text-xs ${
+                          log.severity === "CRITICAL"
+                            ? "bg-red-500/20 text-red-500"
+                            : "bg-yellow-500/20 text-yellow-500"
+                        }`}
+                      >
+                        {log.severity}
+                      </span>
+                    </div>
+                    <p className="text-gray-400 text-xs">{log.details}</p>
+                  </div>
+                ))}
+              {auditLogs.filter((log: any) => log.severity === "CRITICAL" || log.severity === "HIGH").length === 0 && (
+                <p className="text-gray-400 text-center py-4">No critical or high severity events</p>
+              )}
             </div>
-            <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-              <div className="flex justify-between items-start mb-1">
-                <span className="text-yellow-500 font-semibold text-sm">Unusual Access Pattern</span>
-                <span className="px-2 py-1 bg-yellow-500/20 text-yellow-500 rounded text-xs">HIGH</span>
-              </div>
-              <p className="text-gray-400 text-xs">
-                Admin user accessed system from new location (Moscow, Russia)
-              </p>
-            </div>
-            <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-              <div className="flex justify-between items-start mb-1">
-                <span className="text-yellow-500 font-semibold text-sm">Permission Escalation</span>
-                <span className="px-2 py-1 bg-yellow-500/20 text-yellow-500 rounded text-xs">HIGH</span>
-              </div>
-              <p className="text-gray-400 text-xs">
-                User role changed from CLIENT to ADMIN for USR-10005
-              </p>
-            </div>
-          </div>
+          )}
         </div>
       </div>
 

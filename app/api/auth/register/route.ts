@@ -4,11 +4,26 @@ import { hashPassword, validatePassword } from "@/lib/auth/password";
 import { createSession } from "@/lib/auth/session";
 import { sendVerificationEmail } from "@/lib/email";
 import { ensureDefaultBroker, requireBrokerId } from "@/lib/broker";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import type { RegisterRequest, ApiResponse, AuthResponse } from "@/types/api";
 import crypto from "crypto";
 
 export async function POST(request: NextRequest) {
   try {
+    // Check rate limit (3 registrations per hour per IP)
+    const clientIp = getClientIp(request);
+    const rateLimitResult = checkRateLimit(clientIp, 3, 3600000);
+
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json<ApiResponse>(
+        {
+          success: false,
+          error: "Too many registration attempts. Please try again later.",
+        },
+        { status: 429 }
+      );
+    }
+
     // Ensure default broker exists
     const defaultBroker = await ensureDefaultBroker();
 

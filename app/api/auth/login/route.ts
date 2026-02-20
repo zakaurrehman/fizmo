@@ -3,10 +3,25 @@ import { prisma } from "@/lib/prisma";
 import { verifyPassword } from "@/lib/auth/password";
 import { createSession } from "@/lib/auth/session";
 import { ensureDefaultBroker, requireBrokerId } from "@/lib/broker";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import type { LoginRequest, ApiResponse, AuthResponse } from "@/types/api";
 
 export async function POST(request: NextRequest) {
   try {
+    // Check rate limit (5 attempts per minute per IP)
+    const clientIp = getClientIp(request);
+    const rateLimitResult = checkRateLimit(clientIp, 5, 60000);
+
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json<ApiResponse>(
+        {
+          success: false,
+          error: "Too many login attempts. Please try again later.",
+        },
+        { status: 429 }
+      );
+    }
+
     // Ensure default broker exists
     const defaultBroker = await ensureDefaultBroker();
 

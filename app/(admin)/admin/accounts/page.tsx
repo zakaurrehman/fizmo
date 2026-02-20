@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 
 export default function AdminAccountsPage() {
+  const router = useRouter();
   const [selectedTab, setSelectedTab] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [accounts, setAccounts] = useState<any[]>([]);
@@ -17,7 +19,10 @@ export default function AdminAccountsPage() {
 
   async function fetchAccounts() {
     try {
-      const response = await fetch("/api/admin/accounts");
+      const token = localStorage.getItem("fizmo_token");
+      const response = await fetch("/api/admin/accounts", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (response.ok) {
         const data = await response.json();
         setAccounts(data.accounts || []);
@@ -28,6 +33,34 @@ export default function AdminAccountsPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleExportCSV() {
+    const headers = ["Account ID", "Client", "Email", "Type", "Balance", "Equity", "Currency", "Leverage", "KYC", "Status"];
+    const rows = filteredAccounts.map((a) => [
+      a.accountId,
+      a.clientName,
+      a.clientEmail,
+      a.accountType,
+      a.balance?.toFixed(2) || "0.00",
+      a.equity?.toFixed(2) || "0.00",
+      a.currency,
+      a.leverage,
+      a.kycStatus,
+      a.status,
+    ]);
+    const csv = [headers, ...rows].map((r) => r.join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `accounts-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function handleBulkActions() {
+    alert(`Bulk Actions:\n- ${filteredAccounts.length} account(s) currently visible.\n\nSelect individual accounts to apply bulk operations (suspend, activate, export). Full bulk selection coming soon.`);
   }
 
   // Filter accounts based on selected tab and search
@@ -57,8 +90,8 @@ export default function AdminAccountsPage() {
           <p className="text-gray-400">Manage and monitor all trading accounts</p>
         </div>
         <div className="flex space-x-3">
-          <Button variant="outline">Bulk Actions</Button>
-          <Button>+ Create Account</Button>
+          <Button variant="outline" onClick={handleBulkActions}>Bulk Actions</Button>
+          <Button onClick={() => router.push("/admin/clients")}>+ Create Account</Button>
         </div>
       </div>
 
@@ -144,7 +177,7 @@ export default function AdminAccountsPage() {
             <option>Suspended</option>
             <option>Closed</option>
           </select>
-          <Button variant="outline">Export CSV</Button>
+          <Button variant="outline" onClick={handleExportCSV}>Export CSV</Button>
         </div>
       </div>
 
@@ -281,7 +314,10 @@ export default function AdminAccountsPage() {
                     </td>
                     <td className="py-3 px-4 text-sm">
                       <div className="flex space-x-2">
-                        <button className="text-fizmo-purple-400 hover:text-fizmo-purple-300">
+                        <button
+                          onClick={() => router.push(`/admin/clients/${account.clientId}`)}
+                          className="text-fizmo-purple-400 hover:text-fizmo-purple-300"
+                        >
                           View
                         </button>
                       </div>
@@ -303,79 +339,26 @@ export default function AdminAccountsPage() {
         )}
       </div>
 
-      {/* Account Analytics */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="glassmorphic rounded-xl p-6">
-          <h3 className="text-xl font-bold text-white mb-4">Leverage Distribution</h3>
-          <div className="space-y-4">
-            <div>
-              <div className="flex justify-between text-sm mb-2">
-                <span className="text-gray-400">1:100</span>
-                <span className="text-white font-semibold">3,845 accounts (45%)</span>
-              </div>
-              <div className="h-3 bg-fizmo-dark-800 rounded-full overflow-hidden">
-                <div className="h-full bg-green-500 rounded-full" style={{ width: "45%" }}></div>
-              </div>
-            </div>
-            <div>
-              <div className="flex justify-between text-sm mb-2">
-                <span className="text-gray-400">1:200</span>
-                <span className="text-white font-semibold">2,562 accounts (30%)</span>
-              </div>
-              <div className="h-3 bg-fizmo-dark-800 rounded-full overflow-hidden">
-                <div className="h-full bg-blue-500 rounded-full" style={{ width: "30%" }}></div>
-              </div>
-            </div>
-            <div>
-              <div className="flex justify-between text-sm mb-2">
-                <span className="text-gray-400">1:500</span>
-                <span className="text-white font-semibold">1,708 accounts (20%)</span>
-              </div>
-              <div className="h-3 bg-fizmo-dark-800 rounded-full overflow-hidden">
-                <div className="h-full bg-yellow-500 rounded-full" style={{ width: "20%" }}></div>
-              </div>
-            </div>
-            <div>
-              <div className="flex justify-between text-sm mb-2">
-                <span className="text-gray-400">Other</span>
-                <span className="text-white font-semibold">427 accounts (5%)</span>
-              </div>
-              <div className="h-3 bg-fizmo-dark-800 rounded-full overflow-hidden">
-                <div className="h-full bg-purple-500 rounded-full" style={{ width: "5%" }}></div>
-              </div>
-            </div>
+      {/* Account Breakdown */}
+      <div className="glassmorphic rounded-xl p-6">
+        <h3 className="text-xl font-bold text-white mb-4">Account Breakdown</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="text-center p-4 bg-fizmo-dark-800 rounded-lg">
+            <p className="text-gray-400 text-sm mb-1">Live Accounts</p>
+            <p className="text-2xl font-bold text-green-500">{stats.liveAccounts || 0}</p>
           </div>
-        </div>
-
-        <div className="glassmorphic rounded-xl p-6">
-          <h3 className="text-xl font-bold text-white mb-4">Platform Distribution</h3>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-4 bg-fizmo-dark-800 rounded-lg">
-              <div>
-                <p className="text-white font-semibold text-lg">MetaTrader 5</p>
-                <p className="text-gray-400 text-sm">5,482 accounts</p>
-              </div>
-              <div className="text-right">
-                <p className="text-white font-bold text-2xl">64%</p>
-                <p className="text-green-500 text-xs">+2.3% vs last month</p>
-              </div>
-            </div>
-            <div className="flex items-center justify-between p-4 bg-fizmo-dark-800 rounded-lg">
-              <div>
-                <p className="text-white font-semibold text-lg">MetaTrader 4</p>
-                <p className="text-gray-400 text-sm">3,060 accounts</p>
-              </div>
-              <div className="text-right">
-                <p className="text-white font-bold text-2xl">36%</p>
-                <p className="text-red-500 text-xs">-1.5% vs last month</p>
-              </div>
-            </div>
+          <div className="text-center p-4 bg-fizmo-dark-800 rounded-lg">
+            <p className="text-gray-400 text-sm mb-1">Demo Accounts</p>
+            <p className="text-2xl font-bold text-blue-500">{stats.demoAccounts || 0}</p>
           </div>
-
-          {/* Margin Level Warning */}
-          <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-            <p className="text-yellow-500 text-sm">
-              <strong>⚠️ Margin Call Alert:</strong> 24 accounts below 100% margin level
+          <div className="text-center p-4 bg-fizmo-dark-800 rounded-lg">
+            <p className="text-gray-400 text-sm mb-1">Active</p>
+            <p className="text-2xl font-bold text-white">{stats.activeAccounts || 0}</p>
+          </div>
+          <div className="text-center p-4 bg-fizmo-dark-800 rounded-lg">
+            <p className="text-gray-400 text-sm mb-1">Suspended</p>
+            <p className="text-2xl font-bold text-red-500">
+              {(stats.totalAccounts || 0) - (stats.activeAccounts || 0)}
             </p>
           </div>
         </div>

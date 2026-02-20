@@ -16,10 +16,22 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Broker context not found" }, { status: 400 });
     }
 
-    // TODO: Add admin role check here
-    // For now, allow all authenticated users
+    if (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
-    // Get all clients within this broker
+    // Get pagination params
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = parseInt(searchParams.get("limit") || "50");
+    const skip = (page - 1) * limit;
+
+    // Get total count
+    const total = await prisma.client.count({
+      where: { brokerId },
+    });
+
+    // Get paginated clients
     const clients = await prisma.client.findMany({
       where: {
         brokerId,
@@ -50,6 +62,8 @@ export async function GET(request: NextRequest) {
       orderBy: {
         createdAt: "desc",
       },
+      skip,
+      take: limit,
     });
 
     // Calculate total balance for each client
@@ -68,7 +82,17 @@ export async function GET(request: NextRequest) {
       accounts: client.accounts,
     }));
 
-    return NextResponse.json({ clients: clientsWithStats });
+    const totalPages = Math.ceil(total / limit);
+
+    return NextResponse.json({
+      clients: clientsWithStats,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+      },
+    });
   } catch (error: any) {
     console.error("Admin clients fetch error:", error);
     return NextResponse.json(

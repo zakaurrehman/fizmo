@@ -17,7 +17,10 @@ export default function AdminTransactionsPage() {
 
   async function fetchTransactions() {
     try {
-      const response = await fetch("/api/admin/transactions");
+      const token = localStorage.getItem("fizmo_token");
+      const response = await fetch("/api/admin/transactions", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (response.ok) {
         const data = await response.json();
         setTransactions(data.transactions || []);
@@ -28,6 +31,38 @@ export default function AdminTransactionsPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleExportCSV() {
+    const headers = ["TX ID", "Timestamp", "Client", "Account", "Type", "Method", "Amount", "Currency", "Status"];
+    const rows = filteredTransactions.map((tx) => [
+      tx.txId,
+      new Date(tx.timestamp).toLocaleString(),
+      tx.clientName,
+      tx.accountId,
+      tx.type,
+      tx.method,
+      tx.amount?.toFixed(2) || "0.00",
+      tx.currency,
+      tx.status,
+    ]);
+    const csv = [headers, ...rows].map((r) => r.join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `transactions-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function handleReconcile() {
+    const pending = transactions.filter((t) => t.status === "PENDING").length;
+    alert(`Reconciliation check:\n- Total transactions: ${transactions.length}\n- Pending: ${pending}\n\nReview pending transactions on the deposits and withdrawals pages to reconcile.`);
+  }
+
+  function handleManualTransaction() {
+    alert("Manual Transaction:\nUse the Deposits or Withdrawals pages to manually approve/reject transactions. Direct transaction creation requires API access at POST /api/admin/deposits or /api/admin/withdrawals.");
   }
 
   // Filter transactions based on selected tab and search
@@ -57,8 +92,8 @@ export default function AdminTransactionsPage() {
           <p className="text-gray-400">Monitor and manage all financial transactions</p>
         </div>
         <div className="flex space-x-3">
-          <Button variant="outline">Reconcile</Button>
-          <Button>Manual Transaction</Button>
+          <Button variant="outline" onClick={handleReconcile}>Reconcile</Button>
+          <Button onClick={handleManualTransaction}>Manual Transaction</Button>
         </div>
       </div>
 
@@ -132,7 +167,7 @@ export default function AdminTransactionsPage() {
             <option>Processing</option>
             <option>Failed</option>
           </select>
-          <Button variant="outline">Export CSV</Button>
+          <Button variant="outline" onClick={handleExportCSV}>Export CSV</Button>
         </div>
       </div>
 
@@ -300,93 +335,37 @@ export default function AdminTransactionsPage() {
         )}
       </div>
 
-      {/* Transaction Breakdown */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="glassmorphic rounded-xl p-6">
-          <h3 className="text-xl font-bold text-white mb-4">Transaction Breakdown (24h)</h3>
-          <div className="space-y-4">
-            <div>
-              <div className="flex justify-between text-sm mb-2">
-                <span className="text-gray-400">Deposits</span>
-                <span className="text-green-500 font-semibold">642 txns ($482,340)</span>
-              </div>
-              <div className="h-3 bg-fizmo-dark-800 rounded-full overflow-hidden">
-                <div className="h-full bg-green-500 rounded-full" style={{ width: "51.4%" }}></div>
-              </div>
-            </div>
-            <div>
-              <div className="flex justify-between text-sm mb-2">
-                <span className="text-gray-400">Withdrawals</span>
-                <span className="text-red-500 font-semibold">385 txns ($128,450)</span>
-              </div>
-              <div className="h-3 bg-fizmo-dark-800 rounded-full overflow-hidden">
-                <div className="h-full bg-red-500 rounded-full" style={{ width: "30.8%" }}></div>
-              </div>
-            </div>
-            <div>
-              <div className="flex justify-between text-sm mb-2">
-                <span className="text-gray-400">Internal Transfers</span>
-                <span className="text-blue-500 font-semibold">168 txns ($58,200)</span>
-              </div>
-              <div className="h-3 bg-fizmo-dark-800 rounded-full overflow-hidden">
-                <div className="h-full bg-blue-500 rounded-full" style={{ width: "13.4%" }}></div>
-              </div>
-            </div>
-            <div>
-              <div className="flex justify-between text-sm mb-2">
-                <span className="text-gray-400">Commissions</span>
-                <span className="text-purple-500 font-semibold">53 txns ($13,350)</span>
-              </div>
-              <div className="h-3 bg-fizmo-dark-800 rounded-full overflow-hidden">
-                <div className="h-full bg-purple-500 rounded-full" style={{ width: "4.4%" }}></div>
-              </div>
-            </div>
+      {/* Transaction Summary */}
+      <div className="glassmorphic rounded-xl p-6">
+        <h3 className="text-xl font-bold text-white mb-4">Transaction Summary (All Time)</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="text-center p-4 bg-fizmo-dark-800 rounded-lg">
+            <p className="text-gray-400 text-sm mb-1">Deposits</p>
+            <p className="text-2xl font-bold text-green-500">
+              {transactions.filter((t) => t.type === "DEPOSIT").length}
+            </p>
+            <p className="text-gray-400 text-xs">transactions</p>
           </div>
-        </div>
-
-        <div className="glassmorphic rounded-xl p-6">
-          <h3 className="text-xl font-bold text-white mb-4">Payment Methods (24h)</h3>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 bg-fizmo-dark-800 rounded-lg">
-              <div>
-                <p className="text-white font-medium text-sm">Credit/Debit Card</p>
-                <p className="text-gray-400 text-xs">524 transactions</p>
-              </div>
-              <div className="text-right">
-                <p className="text-white font-bold">$285,400</p>
-                <p className="text-gray-400 text-xs">42%</p>
-              </div>
-            </div>
-            <div className="flex items-center justify-between p-3 bg-fizmo-dark-800 rounded-lg">
-              <div>
-                <p className="text-white font-medium text-sm">Cryptocurrency</p>
-                <p className="text-gray-400 text-xs">312 transactions</p>
-              </div>
-              <div className="text-right">
-                <p className="text-white font-bold">$245,680</p>
-                <p className="text-gray-400 text-xs">36%</p>
-              </div>
-            </div>
-            <div className="flex items-center justify-between p-3 bg-fizmo-dark-800 rounded-lg">
-              <div>
-                <p className="text-white font-medium text-sm">Bank Transfer</p>
-                <p className="text-gray-400 text-xs">185 transactions</p>
-              </div>
-              <div className="text-right">
-                <p className="text-white font-bold">$98,150</p>
-                <p className="text-gray-400 text-xs">14%</p>
-              </div>
-            </div>
-            <div className="flex items-center justify-between p-3 bg-fizmo-dark-800 rounded-lg">
-              <div>
-                <p className="text-white font-medium text-sm">E-Wallet</p>
-                <p className="text-gray-400 text-xs">227 transactions</p>
-              </div>
-              <div className="text-right">
-                <p className="text-white font-bold">$53,110</p>
-                <p className="text-gray-400 text-xs">8%</p>
-              </div>
-            </div>
+          <div className="text-center p-4 bg-fizmo-dark-800 rounded-lg">
+            <p className="text-gray-400 text-sm mb-1">Withdrawals</p>
+            <p className="text-2xl font-bold text-red-500">
+              {transactions.filter((t) => t.type === "WITHDRAWAL").length}
+            </p>
+            <p className="text-gray-400 text-xs">transactions</p>
+          </div>
+          <div className="text-center p-4 bg-fizmo-dark-800 rounded-lg">
+            <p className="text-gray-400 text-sm mb-1">Transfers</p>
+            <p className="text-2xl font-bold text-blue-500">
+              {transactions.filter((t) => t.type === "INTERNAL_TRANSFER").length}
+            </p>
+            <p className="text-gray-400 text-xs">transactions</p>
+          </div>
+          <div className="text-center p-4 bg-fizmo-dark-800 rounded-lg">
+            <p className="text-gray-400 text-sm mb-1">Commissions</p>
+            <p className="text-2xl font-bold text-purple-500">
+              {transactions.filter((t) => t.type === "COMMISSION").length}
+            </p>
+            <p className="text-gray-400 text-xs">transactions</p>
           </div>
         </div>
       </div>

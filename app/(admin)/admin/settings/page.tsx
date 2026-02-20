@@ -17,7 +17,10 @@ export default function AdminSettingsPage() {
   async function fetchSettings() {
     setLoading(true);
     try {
-      const response = await fetch("/api/admin/settings");
+      const token = localStorage.getItem("fizmo_token");
+      const response = await fetch("/api/admin/settings", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (response.ok) {
         const data = await response.json();
         setSettings(data.settings || {});
@@ -34,9 +37,10 @@ export default function AdminSettingsPage() {
     try {
       // Convert grouped settings back to flat array
       const settingsArray = Object.values(settings).flat();
+      const token = localStorage.getItem("fizmo_token");
       const response = await fetch("/api/admin/settings", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ settings: settingsArray }),
       });
 
@@ -59,8 +63,10 @@ export default function AdminSettingsPage() {
     }
 
     try {
+      const token = localStorage.getItem("fizmo_token");
       const response = await fetch("/api/admin/settings", {
         method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (response.ok) {

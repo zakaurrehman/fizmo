@@ -113,6 +113,12 @@ model Account {
   equity      Decimal       @default(0) @db.Decimal(18, 2)
   leverage    Int           @default(100)
   status      AccountStatus @default(ACTIVE)
+  // MT4/MT5 Integration fields
+  mt4Login    Int?          @map("mt4_login") // MT4 login ID
+  mt5Login    Int?          @map("mt5_login") // MT5 login ID
+  totalTrades Int           @default(0) @map("total_trades")
+  winRate     Decimal       @default(0) @db.Decimal(5, 2) @map("win_rate") // Win percentage
+  lastSyncAt  DateTime?     @map("last_sync_at") // Last MT4/MT5 sync timestamp
   createdAt   DateTime      @default(now()) @map("created_at")
   updatedAt   DateTime      @updatedAt @map("updated_at")
 
@@ -208,14 +214,20 @@ model Trade {
   profit      Decimal? @db.Decimal(18, 2)
   commission  Decimal? @db.Decimal(18, 2)
   swap        Decimal? @db.Decimal(18, 2)
+  direction   String?  // "BUY" or "SELL"
+  status      String   @default("OPEN") // "OPEN" or "CLOSED"
   openTime    DateTime @map("open_time")
   closeTime   DateTime? @map("close_time")
+  comment     String?  // MT4/MT5 trade comment
+  externalId  String?  @unique @map("external_id") // MT4_ticket_number for deduplication
+  provider    String   @default("MT4") // MT4 or MT5
 
   broker      Broker?  @relation(fields: [brokerId], references: [id])
   account     Account  @relation(fields: [accountId], references: [id])
 
   @@index([brokerId])
   @@index([accountId, openTime])
+  @@index([externalId])
   @@map("trades")
 }
 

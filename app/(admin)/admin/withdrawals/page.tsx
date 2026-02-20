@@ -15,7 +15,10 @@ export default function AdminWithdrawalsPage() {
 
   async function fetchWithdrawals() {
     try {
-      const response = await fetch("/api/admin/withdrawals");
+      const token = localStorage.getItem("fizmo_token");
+      const response = await fetch("/api/admin/withdrawals", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (response.ok) {
         const data = await response.json();
         setWithdrawals(data.withdrawals || []);
@@ -34,7 +37,7 @@ export default function AdminWithdrawalsPage() {
     try {
       const response = await fetch("/api/admin/withdrawals", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("fizmo_token")}` },
         body: JSON.stringify({ withdrawalId, status: "COMPLETED" }),
       });
 
@@ -60,7 +63,7 @@ export default function AdminWithdrawalsPage() {
     try {
       const response = await fetch("/api/admin/withdrawals", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("fizmo_token")}` },
         body: JSON.stringify({ withdrawalId, status: "REJECTED" }),
       });
 
@@ -77,6 +80,41 @@ export default function AdminWithdrawalsPage() {
     } finally {
       setProcessing(null);
     }
+  }
+
+  function handleExportCSV() {
+    const headers = ["Date", "Client", "Email", "Account", "Amount", "Method", "Details", "Status"];
+    const rows = filteredWithdrawals.map((w) => [
+      new Date(w.createdAt).toLocaleString(),
+      `${w.account?.client?.firstName || ""} ${w.account?.client?.lastName || ""}`.trim(),
+      w.account?.client?.user?.email || "",
+      w.account?.accountId || "",
+      w.amount?.toFixed(2) || "0.00",
+      w.paymentMethod || "",
+      w.paymentDetails?.substring(0, 30) || "",
+      w.status || "",
+    ]);
+    const csv = [headers, ...rows].map((r) => r.join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `withdrawals-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function handleBatchProcess() {
+    const pending = withdrawals.filter((w) => w.status === "PENDING");
+    if (pending.length === 0) {
+      alert("No pending withdrawals to batch process.");
+      return;
+    }
+    alert(`Batch Process:\n${pending.length} pending withdrawal(s) found.\nUse the Approve/Reject buttons on each row to process them individually.`);
+  }
+
+  function handleManualWithdrawal() {
+    alert("Manual Withdrawal:\nTo create a manual withdrawal, use the API directly at POST /api/withdrawals with the required parameters including accountId and amount.");
   }
 
   // Filter withdrawals based on selected tab
@@ -111,8 +149,8 @@ export default function AdminWithdrawalsPage() {
           <p className="text-gray-400">Review and process client withdrawal requests</p>
         </div>
         <div className="flex space-x-3">
-          <Button variant="outline">Manual Withdrawal</Button>
-          <Button>Batch Process</Button>
+          <Button variant="outline" onClick={handleManualWithdrawal}>Manual Withdrawal</Button>
+          <Button onClick={handleBatchProcess}>Batch Process</Button>
         </div>
       </div>
 
@@ -193,7 +231,7 @@ export default function AdminWithdrawalsPage() {
               Rejected ({stats.rejectedCount})
             </button>
           </div>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={handleExportCSV}>
             Export Report
           </Button>
         </div>

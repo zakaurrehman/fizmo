@@ -16,7 +16,10 @@ export default function AdminReportsPage() {
   async function fetchReports() {
     setLoading(true);
     try {
-      const response = await fetch(`/api/admin/reports?range=${dateRange}`);
+      const token = localStorage.getItem("fizmo_token");
+      const response = await fetch(`/api/admin/reports?range=${dateRange}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (response.ok) {
         const reportData = await response.json();
         setData(reportData);
@@ -174,94 +177,80 @@ export default function AdminReportsPage() {
         <>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="glassmorphic rounded-xl p-6">
-              <h3 className="text-xl font-bold text-white mb-4">Revenue Breakdown (30d)</h3>
-              <div className="space-y-4">
-                <div>
-                  <div className="flex justify-between text-sm mb-2">
-                    <span className="text-gray-400">Trading Commissions</span>
-                    <span className="text-white font-semibold">$485,200 (54.4%)</span>
+              <h3 className="text-xl font-bold text-white mb-4">Net Deposits ({dateRange})</h3>
+              {loading ? (
+                <p className="text-gray-400 text-center">Loading...</p>
+              ) : (
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="text-gray-400">Total Deposits</span>
+                      <span className="text-green-500 font-semibold">
+                        ${data?.financial?.totalDeposits?.toLocaleString() || 0}
+                      </span>
+                    </div>
+                    <div className="h-3 bg-fizmo-dark-800 rounded-full overflow-hidden">
+                      <div className="h-full bg-green-500 rounded-full" style={{ width: "100%" }}></div>
+                    </div>
                   </div>
-                  <div className="h-3 bg-fizmo-dark-800 rounded-full overflow-hidden">
-                    <div className="h-full bg-green-500 rounded-full" style={{ width: "54.4%" }}></div>
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="text-gray-400">Total Withdrawals</span>
+                      <span className="text-red-500 font-semibold">
+                        ${data?.financial?.totalWithdrawals?.toLocaleString() || 0}
+                      </span>
+                    </div>
+                    <div
+                      className="h-3 bg-fizmo-dark-800 rounded-full overflow-hidden"
+                    >
+                      <div
+                        className="h-full bg-red-500 rounded-full"
+                        style={{
+                          width: data?.financial?.totalDeposits > 0
+                            ? `${Math.min((data.financial.totalWithdrawals / data.financial.totalDeposits) * 100, 100)}%`
+                            : "0%",
+                        }}
+                      ></div>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="text-gray-400">Net Deposits</span>
+                      <span className="text-white font-semibold">
+                        ${data?.financial?.netDeposits?.toLocaleString() || 0}
+                      </span>
+                    </div>
                   </div>
                 </div>
-                <div>
-                  <div className="flex justify-between text-sm mb-2">
-                    <span className="text-gray-400">Spreads</span>
-                    <span className="text-white font-semibold">$285,100 (31.9%)</span>
-                  </div>
-                  <div className="h-3 bg-fizmo-dark-800 rounded-full overflow-hidden">
-                    <div className="h-full bg-blue-500 rounded-full" style={{ width: "31.9%" }}></div>
-                  </div>
-                </div>
-                <div>
-                  <div className="flex justify-between text-sm mb-2">
-                    <span className="text-gray-400">Deposit/Withdrawal Fees</span>
-                    <span className="text-white font-semibold">$89,450 (10.0%)</span>
-                  </div>
-                  <div className="h-3 bg-fizmo-dark-800 rounded-full overflow-hidden">
-                    <div className="h-full bg-yellow-500 rounded-full" style={{ width: "10.0%" }}></div>
-                  </div>
-                </div>
-                <div>
-                  <div className="flex justify-between text-sm mb-2">
-                    <span className="text-gray-400">Inactivity Fees</span>
-                    <span className="text-white font-semibold">$32,700 (3.7%)</span>
-                  </div>
-                  <div className="h-3 bg-fizmo-dark-800 rounded-full overflow-hidden">
-                    <div className="h-full bg-purple-500 rounded-full" style={{ width: "3.7%" }}></div>
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
 
             <div className="glassmorphic rounded-xl p-6">
-              <h3 className="text-xl font-bold text-white mb-4">Revenue Trend</h3>
-              <div className="h-64 flex items-center justify-center bg-fizmo-dark-800 rounded-lg">
-                <p className="text-gray-400">Line Chart: Revenue over time (Placeholder)</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="glassmorphic rounded-xl p-6">
-            <h3 className="text-xl font-bold text-white mb-4">Top Revenue Sources</h3>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-fizmo-purple-500/20">
-                    <th className="text-left text-gray-400 py-3 px-4 text-sm">SOURCE</th>
-                    <th className="text-left text-gray-400 py-3 px-4 text-sm">REVENUE</th>
-                    <th className="text-left text-gray-400 py-3 px-4 text-sm">% OF TOTAL</th>
-                    <th className="text-left text-gray-400 py-3 px-4 text-sm">GROWTH</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-b border-fizmo-purple-500/10">
-                    <td className="py-3 px-4 text-white">Forex Trading</td>
-                    <td className="py-3 px-4 text-white font-semibold">$542,300</td>
-                    <td className="py-3 px-4 text-gray-400">60.8%</td>
-                    <td className="py-3 px-4 text-green-500">+22.5%</td>
-                  </tr>
-                  <tr className="border-b border-fizmo-purple-500/10">
-                    <td className="py-3 px-4 text-white">Crypto Trading</td>
-                    <td className="py-3 px-4 text-white font-semibold">$228,050</td>
-                    <td className="py-3 px-4 text-gray-400">25.6%</td>
-                    <td className="py-3 px-4 text-green-500">+18.3%</td>
-                  </tr>
-                  <tr className="border-b border-fizmo-purple-500/10">
-                    <td className="py-3 px-4 text-white">Commodities</td>
-                    <td className="py-3 px-4 text-white font-semibold">$89,400</td>
-                    <td className="py-3 px-4 text-gray-400">10.0%</td>
-                    <td className="py-3 px-4 text-green-500">+8.7%</td>
-                  </tr>
-                  <tr className="border-b border-fizmo-purple-500/10">
-                    <td className="py-3 px-4 text-white">Indices</td>
-                    <td className="py-3 px-4 text-white font-semibold">$32,700</td>
-                    <td className="py-3 px-4 text-gray-400">3.6%</td>
-                    <td className="py-3 px-4 text-red-500">-2.1%</td>
-                  </tr>
-                </tbody>
-              </table>
+              <h3 className="text-xl font-bold text-white mb-4">Key Metrics</h3>
+              {loading ? (
+                <p className="text-gray-400 text-center">Loading...</p>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex justify-between p-3 bg-fizmo-dark-800 rounded-lg">
+                    <span className="text-gray-400">Avg Revenue/Client</span>
+                    <span className="text-white font-bold">
+                      ${data?.quickStats?.avgRevenuePerClient?.toFixed(0) || 0}
+                    </span>
+                  </div>
+                  <div className="flex justify-between p-3 bg-fizmo-dark-800 rounded-lg">
+                    <span className="text-gray-400">Total Balance (All Clients)</span>
+                    <span className="text-white font-bold">
+                      ${data?.financial?.totalBalance?.toLocaleString() || 0}
+                    </span>
+                  </div>
+                  <div className="flex justify-between p-3 bg-fizmo-dark-800 rounded-lg">
+                    <span className="text-gray-400">Total Equity</span>
+                    <span className="text-white font-bold">
+                      ${data?.financial?.totalEquity?.toLocaleString() || 0}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </>
@@ -359,90 +348,10 @@ export default function AdminReportsPage() {
 
       {/* Trading Performance Report */}
       {selectedReport === "trading" && (
-        <>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="glassmorphic rounded-xl p-6">
-              <h3 className="text-xl font-bold text-white mb-4">Total Volume (30d)</h3>
-              <p className="text-4xl font-bold text-white mb-2">$128.5M</p>
-              <p className="text-green-500 text-sm mb-4">+24.1% vs prev period</p>
-              <div className="h-32 flex items-center justify-center bg-fizmo-dark-800 rounded-lg">
-                <p className="text-gray-400 text-sm">Mini Chart (Placeholder)</p>
-              </div>
-            </div>
-
-            <div className="glassmorphic rounded-xl p-6">
-              <h3 className="text-xl font-bold text-white mb-4">Total Trades (30d)</h3>
-              <p className="text-4xl font-bold text-white mb-2">45,820</p>
-              <p className="text-green-500 text-sm mb-4">+18.7% vs prev period</p>
-              <div className="h-32 flex items-center justify-center bg-fizmo-dark-800 rounded-lg">
-                <p className="text-gray-400 text-sm">Mini Chart (Placeholder)</p>
-              </div>
-            </div>
-
-            <div className="glassmorphic rounded-xl p-6">
-              <h3 className="text-xl font-bold text-white mb-4">Avg Trade Size</h3>
-              <p className="text-4xl font-bold text-white mb-2">$2,804</p>
-              <p className="text-green-500 text-sm mb-4">+4.5% vs prev period</p>
-              <div className="h-32 flex items-center justify-center bg-fizmo-dark-800 rounded-lg">
-                <p className="text-gray-400 text-sm">Mini Chart (Placeholder)</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="glassmorphic rounded-xl p-6">
-            <h3 className="text-xl font-bold text-white mb-4">Top Traded Instruments</h3>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-fizmo-purple-500/20">
-                    <th className="text-left text-gray-400 py-3 px-4 text-sm">INSTRUMENT</th>
-                    <th className="text-left text-gray-400 py-3 px-4 text-sm">VOLUME</th>
-                    <th className="text-left text-gray-400 py-3 px-4 text-sm">TRADES</th>
-                    <th className="text-left text-gray-400 py-3 px-4 text-sm">AVG SIZE</th>
-                    <th className="text-left text-gray-400 py-3 px-4 text-sm">TREND</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-b border-fizmo-purple-500/10">
-                    <td className="py-3 px-4 text-white font-semibold">EUR/USD</td>
-                    <td className="py-3 px-4 text-white">$42.5M</td>
-                    <td className="py-3 px-4 text-gray-400">18,245</td>
-                    <td className="py-3 px-4 text-gray-400">$2,330</td>
-                    <td className="py-3 px-4 text-green-500">+15.2%</td>
-                  </tr>
-                  <tr className="border-b border-fizmo-purple-500/10">
-                    <td className="py-3 px-4 text-white font-semibold">BTC/USD</td>
-                    <td className="py-3 px-4 text-white">$28.2M</td>
-                    <td className="py-3 px-4 text-gray-400">8,542</td>
-                    <td className="py-3 px-4 text-gray-400">$3,301</td>
-                    <td className="py-3 px-4 text-green-500">+42.8%</td>
-                  </tr>
-                  <tr className="border-b border-fizmo-purple-500/10">
-                    <td className="py-3 px-4 text-white font-semibold">GBP/USD</td>
-                    <td className="py-3 px-4 text-white">$18.4M</td>
-                    <td className="py-3 px-4 text-gray-400">7,825</td>
-                    <td className="py-3 px-4 text-gray-400">$2,351</td>
-                    <td className="py-3 px-4 text-green-500">+8.5%</td>
-                  </tr>
-                  <tr className="border-b border-fizmo-purple-500/10">
-                    <td className="py-3 px-4 text-white font-semibold">GOLD</td>
-                    <td className="py-3 px-4 text-white">$15.8M</td>
-                    <td className="py-3 px-4 text-gray-400">5,420</td>
-                    <td className="py-3 px-4 text-gray-400">$2,914</td>
-                    <td className="py-3 px-4 text-green-500">+12.3%</td>
-                  </tr>
-                  <tr className="border-b border-fizmo-purple-500/10">
-                    <td className="py-3 px-4 text-white font-semibold">USD/JPY</td>
-                    <td className="py-3 px-4 text-white">$12.6M</td>
-                    <td className="py-3 px-4 text-gray-400">5,788</td>
-                    <td className="py-3 px-4 text-gray-400">$2,177</td>
-                    <td className="py-3 px-4 text-red-500">-3.2%</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </>
+        <div className="glassmorphic rounded-xl p-12 text-center">
+          <p className="text-gray-400 text-lg mb-2">Trading Performance data requires MT4/MT5 integration</p>
+          <p className="text-gray-500 text-sm">Live trade data will appear here once the trading platform is connected.</p>
+        </div>
       )}
 
       {/* Financial Summary Report */}
@@ -510,50 +419,30 @@ export default function AdminReportsPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="glassmorphic rounded-xl p-6">
-              <h3 className="text-xl font-bold text-white mb-4">Payment Method Distribution</h3>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 bg-fizmo-dark-800 rounded-lg">
-                  <span className="text-white">Credit/Debit Card</span>
-                  <span className="text-white font-bold">42%</span>
+          <div className="glassmorphic rounded-xl p-6">
+            <h3 className="text-xl font-bold text-white mb-4">Financial Summary</h3>
+            {loading ? (
+              <p className="text-gray-400 text-center">Loading...</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex justify-between p-3 bg-fizmo-dark-800 rounded-lg">
+                  <span className="text-gray-400">Total Deposits</span>
+                  <span className="text-green-500 font-bold">${data?.financial?.totalDeposits?.toLocaleString() || 0}</span>
                 </div>
-                <div className="flex items-center justify-between p-3 bg-fizmo-dark-800 rounded-lg">
-                  <span className="text-white">Cryptocurrency</span>
-                  <span className="text-white font-bold">36%</span>
+                <div className="flex justify-between p-3 bg-fizmo-dark-800 rounded-lg">
+                  <span className="text-gray-400">Total Withdrawals</span>
+                  <span className="text-red-500 font-bold">${data?.financial?.totalWithdrawals?.toLocaleString() || 0}</span>
                 </div>
-                <div className="flex items-center justify-between p-3 bg-fizmo-dark-800 rounded-lg">
-                  <span className="text-white">Bank Transfer</span>
-                  <span className="text-white font-bold">14%</span>
+                <div className="flex justify-between p-3 bg-fizmo-dark-800 rounded-lg">
+                  <span className="text-gray-400">Net Deposits</span>
+                  <span className="text-white font-bold">${data?.financial?.netDeposits?.toLocaleString() || 0}</span>
                 </div>
-                <div className="flex items-center justify-between p-3 bg-fizmo-dark-800 rounded-lg">
-                  <span className="text-white">E-Wallet</span>
-                  <span className="text-white font-bold">8%</span>
+                <div className="flex justify-between p-3 bg-fizmo-dark-800 rounded-lg">
+                  <span className="text-gray-400">Total Balance</span>
+                  <span className="text-white font-bold">${data?.financial?.totalBalance?.toLocaleString() || 0}</span>
                 </div>
               </div>
-            </div>
-
-            <div className="glassmorphic rounded-xl p-6">
-              <h3 className="text-xl font-bold text-white mb-4">Transaction Fees (30d)</h3>
-              <div className="space-y-3">
-                <div className="flex justify-between p-3 bg-fizmo-dark-800 rounded-lg">
-                  <span className="text-gray-400">Deposit Fees Collected</span>
-                  <span className="text-green-500 font-bold">$4,820</span>
-                </div>
-                <div className="flex justify-between p-3 bg-fizmo-dark-800 rounded-lg">
-                  <span className="text-gray-400">Withdrawal Fees Collected</span>
-                  <span className="text-green-500 font-bold">$3,630</span>
-                </div>
-                <div className="flex justify-between p-3 bg-fizmo-dark-800 rounded-lg">
-                  <span className="text-gray-400">Payment Gateway Costs</span>
-                  <span className="text-red-500 font-bold">-$2,145</span>
-                </div>
-                <div className="flex justify-between p-3 bg-fizmo-dark-800 rounded-lg">
-                  <span className="text-white font-semibold">Net Fee Revenue</span>
-                  <span className="text-white font-bold">$6,305</span>
-                </div>
-              </div>
-            </div>
+            )}
           </div>
         </>
       )}
@@ -675,45 +564,29 @@ export default function AdminReportsPage() {
           </div>
 
           <div className="glassmorphic rounded-xl p-6">
-            <h3 className="text-xl font-bold text-white mb-4">Recent Compliance Actions</h3>
-            <div className="space-y-3">
-              <div className="p-4 bg-fizmo-dark-800 rounded-lg">
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <span className="px-2 py-1 bg-red-500/20 text-red-500 rounded text-xs font-semibold">
-                      SAR FILED
-                    </span>
-                    <p className="text-white font-semibold mt-2">Suspicious Transaction Pattern</p>
-                    <p className="text-gray-400 text-sm">Client CL-100248 - Multiple transactions below threshold</p>
-                  </div>
-                  <span className="text-gray-500 text-xs">2024-12-21 10:15</span>
+            <h3 className="text-xl font-bold text-white mb-4">KYC Overview</h3>
+            {loading ? (
+              <p className="text-gray-400 text-center">Loading...</p>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="text-center p-4 bg-fizmo-dark-800 rounded-lg">
+                  <p className="text-gray-400 text-sm mb-1">Approved</p>
+                  <p className="text-2xl font-bold text-green-500">{data?.compliance?.kycApproved || 0}</p>
+                </div>
+                <div className="text-center p-4 bg-fizmo-dark-800 rounded-lg">
+                  <p className="text-gray-400 text-sm mb-1">Pending</p>
+                  <p className="text-2xl font-bold text-yellow-500">{data?.compliance?.kycPending || 0}</p>
+                </div>
+                <div className="text-center p-4 bg-fizmo-dark-800 rounded-lg">
+                  <p className="text-gray-400 text-sm mb-1">Under Review</p>
+                  <p className="text-2xl font-bold text-blue-500">{data?.compliance?.kycUnderReview || 0}</p>
+                </div>
+                <div className="text-center p-4 bg-fizmo-dark-800 rounded-lg">
+                  <p className="text-gray-400 text-sm mb-1">Rejected</p>
+                  <p className="text-2xl font-bold text-red-500">{data?.compliance?.kycRejected || 0}</p>
                 </div>
               </div>
-              <div className="p-4 bg-fizmo-dark-800 rounded-lg">
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <span className="px-2 py-1 bg-yellow-500/20 text-yellow-500 rounded text-xs font-semibold">
-                      ACCOUNT FROZEN
-                    </span>
-                    <p className="text-white font-semibold mt-2">Sanctions List Match</p>
-                    <p className="text-gray-400 text-sm">Client CL-100260 - OFAC SDN list match pending review</p>
-                  </div>
-                  <span className="text-gray-500 text-xs">2024-12-21 08:30</span>
-                </div>
-              </div>
-              <div className="p-4 bg-fizmo-dark-800 rounded-lg">
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <span className="px-2 py-1 bg-green-500/20 text-green-500 rounded text-xs font-semibold">
-                      CLEARED
-                    </span>
-                    <p className="text-white font-semibold mt-2">Enhanced Due Diligence Completed</p>
-                    <p className="text-gray-400 text-sm">Client CL-100245 - High value transaction cleared</p>
-                  </div>
-                  <span className="text-gray-500 text-xs">2024-12-20 16:45</span>
-                </div>
-              </div>
-            </div>
+            )}
           </div>
         </>
       )}

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth, getBrokerIdFromToken } from "@/lib/auth";
+import { sendKycStatusEmail } from "@/lib/email";
 
 /**
  * GET /api/admin/kyc
@@ -246,7 +247,13 @@ export async function PUT(request: NextRequest) {
       },
     });
 
-    // TODO: Send email notification to user about status change
+    // Send email notification to user about overall KYC status change
+    await sendKycStatusEmail(
+      document.client.user.email,
+      userKycStatus,
+      status === "REJECTED" ? rejectionReason : undefined,
+      `${document.client.firstName} ${document.client.lastName}`
+    );
 
     return NextResponse.json({
       success: true,

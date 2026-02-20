@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth, getBrokerIdFromToken } from "@/lib/auth";
 import { notifyDeposit } from "@/lib/notifications";
+import { sendDepositConfirmation } from "@/lib/email";
+import { auditDepositChange } from "@/lib/audit";
 
 // GET - Fetch all deposits (Admin only)
 export async function GET(request: NextRequest) {
@@ -11,13 +13,28 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    if (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     // Get brokerId from JWT token
     const brokerId = await getBrokerIdFromToken(request);
     if (!brokerId) {
       return NextResponse.json({ error: "Broker context not found" }, { status: 400 });
     }
 
-    // Get all deposits within this broker
+    // Get pagination params
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = parseInt(searchParams.get("limit") || "50");
+    const skip = (page - 1) * limit;
+
+    // Get total count
+    const total = await prisma.deposit.count({
+      where: { brokerId },
+    });
+
+    // Get paginated deposits
     const deposits = await prisma.deposit.findMany({
       where: {
         brokerId,
@@ -38,9 +55,21 @@ export async function GET(request: NextRequest) {
       orderBy: {
         createdAt: "desc",
       },
+      skip,
+      take: limit,
     });
 
-    return NextResponse.json({ deposits });
+    const totalPages = Math.ceil(total / limit);
+
+    return NextResponse.json({
+      deposits,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+      },
+    });
   } catch (error: any) {
     console.error("Admin deposits fetch error:", error);
     return NextResponse.json(
@@ -56,6 +85,10 @@ export async function POST(request: NextRequest) {
     const user = await verifyAuth(request);
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const brokerId = await getBrokerIdFromToken(request);
@@ -126,6 +159,10 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    if (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     // Get brokerId from JWT token
     const brokerId = await getBrokerIdFromToken(request);
     if (!brokerId) {
@@ -192,7 +229,25 @@ export async function PATCH(request: NextRequest) {
           equity: { increment: deposit.amount },
         },
       });
+
+      // Send confirmation email to user
+      await sendDepositConfirmation(
+        deposit.client.user.email,
+        Number(deposit.amount),
+        account.accountId,
+        deposit.client.firstName || undefined
+      );
     }
+
+    // Log audit trail
+    await auditDepositChange(
+      brokerId,
+      user.id,
+      depositId,
+      status as "COMPLETED" | "REJECTED",
+      Number(deposit.amount),
+      deposit.client.user.email
+    );
 
     // Send notification to user
     await notifyDeposit(
