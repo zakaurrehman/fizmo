@@ -562,3 +562,80 @@ export async function sendKycStatusEmail(
     return { success: false, error };
   }
 }
+
+/**
+ * Send MT5 account data email to client
+ */
+export async function sendMT5DataEmail(
+  email: string,
+  accountId: string,
+  mt5Login: number,
+  leverage: number,
+  name?: string
+) {
+  try {
+    await resend.emails.send({
+      from: `Fizmo Trading <${FROM_EMAIL}>`,
+      to: email,
+      subject: "Your MT5 Trading Account Details - Fizmo",
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+            .detail-box { background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin: 20px 0; }
+            .detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f3f4f6; }
+            .label { color: #6b7280; font-size: 14px; }
+            .value { font-weight: bold; color: #111827; }
+            .footer { text-align: center; color: #9ca3af; font-size: 12px; margin-top: 20px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>MT5 Account Details</h1>
+              <p>Your trading account information</p>
+            </div>
+            <div class="content">
+              <p>Hello ${name || "Trader"},</p>
+              <p>Here are your MT5 trading account details:</p>
+              <div class="detail-box">
+                <div class="detail-row">
+                  <span class="label">Account ID</span>
+                  <span class="value">${accountId}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="label">MT5 Login</span>
+                  <span class="value">${mt5Login || "N/A"}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="label">Leverage</span>
+                  <span class="value">1:${leverage}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="label">Server</span>
+                  <span class="value">Fizmo-Live</span>
+                </div>
+              </div>
+              <p>Please keep this information secure and do not share it with anyone.</p>
+              <p>If you did not request this email, please contact support immediately.</p>
+            </div>
+            <div class="footer">
+              <p>&copy; 2024 Fizmo. All rights reserved.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to send MT5 data email:", error);
+    return { success: false, error };
+  }
+}

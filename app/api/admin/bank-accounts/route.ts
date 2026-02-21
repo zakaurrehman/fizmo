@@ -104,4 +104,56 @@ export async function PATCH(request: NextRequest) {
   }
 }
 
+/**
+ * POST /api/admin/bank-accounts
+ * Admin adds a bank account for a client
+ */
+export async function POST(request: NextRequest) {
+  try {
+    const user = await verifyAuth(request);
+    if (!user || (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const brokerId = await getBrokerIdFromToken(request);
+    if (!brokerId) {
+      return NextResponse.json({ error: "Broker context not found" }, { status: 400 });
+    }
+
+    const body = await request.json();
+    const { clientId, bankName, accountHolderName, accountNumber, routingNumber, swiftCode, iban, country, currency } = body;
+
+    if (!clientId || !bankName || !accountHolderName || !accountNumber) {
+      return NextResponse.json({ error: "clientId, bankName, accountHolderName and accountNumber are required" }, { status: 400 });
+    }
+
+    const client = await prisma.client.findFirst({ where: { id: clientId, brokerId } });
+    if (!client) {
+      return NextResponse.json({ error: "Client not found" }, { status: 404 });
+    }
+
+    const bankAccount = await prisma.bankAccount.create({
+      data: {
+        brokerId,
+        clientId,
+        bankName,
+        accountHolderName,
+        accountNumber,
+        routingNumber: routingNumber || null,
+        swiftCode: swiftCode || null,
+        iban: iban || null,
+        country: country || null,
+        currency: currency || "USD",
+        isVerified: false,
+        isPrimary: false,
+      },
+    });
+
+    return NextResponse.json({ success: true, bankAccount });
+  } catch (error: any) {
+    console.error("Add bank account error:", error);
+    return NextResponse.json({ error: "Internal server error", details: error.message }, { status: 500 });
+  }
+}
+
 export const dynamic = "force-dynamic";
