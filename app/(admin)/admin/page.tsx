@@ -322,7 +322,7 @@ export default function AdminDashboardPage() {
                       ${activity.amount.toLocaleString()}
                     </td>
                     <td className="py-3 px-2 lg:px-4 text-gray-400 text-xs lg:text-sm">
-                      {activity.accountId}
+                      {activity.currency || 'USD'}
                     </td>
                     <td className="py-3 px-2 lg:px-4 text-xs lg:text-sm">
                       <span

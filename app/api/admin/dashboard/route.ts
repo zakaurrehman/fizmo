@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
         status: "COMPLETED",
       },
     });
-    const totalDeposits = depositsLast24h.reduce((sum, d) => sum + d.amount, 0);
+    const totalDeposits = depositsLast24h.reduce((sum, d) => sum + Number(d.amount), 0);
 
     // Get total withdrawals in last 24h within this broker
     const withdrawalsLast24h = await prisma.withdrawal.findMany({
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
         status: "COMPLETED",
       },
     });
-    const totalWithdrawals = withdrawalsLast24h.reduce((sum, w) => sum + w.amount, 0);
+    const totalWithdrawals = withdrawalsLast24h.reduce((sum, w) => sum + Number(w.amount), 0);
 
     // Calculate net revenue (deposits - withdrawals)
     const netRevenue = totalDeposits - totalWithdrawals;
@@ -116,7 +116,8 @@ export async function GET(request: NextRequest) {
         type: "Deposit",
         clientName: `${d.client.firstName} ${d.client.lastName}`,
         accountId: d.client.clientId,
-        amount: d.amount,
+        amount: Number(d.amount),
+        currency: d.currency,
         status: d.status,
         createdAt: d.createdAt,
       })),
@@ -125,7 +126,8 @@ export async function GET(request: NextRequest) {
         type: "Withdrawal",
         clientName: `${w.client.firstName} ${w.client.lastName}`,
         accountId: w.client.clientId,
-        amount: w.amount,
+        amount: Number(w.amount),
+        currency: w.currency,
         status: w.status,
         createdAt: w.createdAt,
       })),
@@ -165,11 +167,11 @@ export async function GET(request: NextRequest) {
 
       const depositsInMonth = monthlyDeposits
         .filter((d) => new Date(d.createdAt) >= monthStart && new Date(d.createdAt) <= monthEnd)
-        .reduce((sum, d) => sum + d.amount, 0);
+        .reduce((sum, d) => sum + Number(d.amount), 0);
 
       const withdrawalsInMonth = monthlyWithdrawals
         .filter((w) => new Date(w.createdAt) >= monthStart && new Date(w.createdAt) <= monthEnd)
-        .reduce((sum, w) => sum + w.amount, 0);
+        .reduce((sum, w) => sum + Number(w.amount), 0);
 
       fundFlowData.push({
         month: monthName,
