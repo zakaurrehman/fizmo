@@ -10,16 +10,15 @@ export default function SubAdminListPage() {
     async function fetchUsers() {
       try {
         const token = localStorage.getItem("fizmo_token");
-        const response = await fetch("/api/admin/users", {
+        const response = await fetch("/api/admin/sub-admins", {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (response.ok) {
           const data = await response.json();
-          const adminUsers = (data.users || []).filter((u: any) => u.role === "ADMIN");
-          setUsers(adminUsers);
+          setUsers(data.users || []);
         }
       } catch (error) {
-        console.error("Failed to fetch users:", error);
+        console.error("Failed to fetch sub admins:", error);
       } finally {
         setLoading(false);
       }

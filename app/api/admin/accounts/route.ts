@@ -84,6 +84,8 @@ export async function GET(request: NextRequest) {
       leverage: account.leverage,
       status: account.status,
       createdAt: account.createdAt,
+      mt4Login: account.mt4Login,
+      mt5Login: account.mt5Login,
       clientName: `${account.client.firstName} ${account.client.lastName}`,
       clientEmail: account.client.user.email,
       clientStatus: account.client.user.status,
