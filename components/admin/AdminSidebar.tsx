@@ -231,15 +231,15 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
       )}
 
       <aside
-        className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-fizmo-dark-800 border-r border-fizmo-purple-500/20 min-h-screen flex flex-col transition-transform duration-300 lg:translate-x-0 ${
+        className={`fixed lg:static inset-y-0 left-0 z-50 w-60 bg-fizmo-dark-800 border-r border-fizmo-purple-500/20 min-h-screen flex flex-col transition-transform duration-300 lg:translate-x-0 ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="p-6 border-b border-fizmo-purple-500/20">
-          <Logo href="/admin" width={120} height={40} showText={true} text="Admin" />
+        <div className="px-4 py-5 border-b border-fizmo-purple-500/20">
+          <Logo href="/admin" width={110} height={36} showText={true} text="Admin" />
         </div>
 
-        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+        <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
           {sidebarConfig.map((item) => {
             if (item.type === "link") {
               const isActive = pathname === item.href;
@@ -249,14 +249,14 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
                   key={item.href}
                   href={item.href}
                   onClick={onClose}
-                  className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all text-sm ${
+                  className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-all text-[13px] ${
                     isActive
-                      ? "bg-fizmo-purple-500/20 text-white border-l-4 border-fizmo-purple-500"
+                      ? "bg-fizmo-purple-500 text-white"
                       : "text-gray-400 hover:bg-fizmo-dark-700 hover:text-white"
                   }`}
                 >
-                  <Icon className="w-5 h-5 flex-shrink-0" />
-                  <span className="font-medium">{item.label}</span>
+                  <Icon className="w-4 h-4 flex-shrink-0" />
+                  <span className="font-medium truncate">{item.label}</span>
                 </Link>
               );
             }
@@ -271,25 +271,25 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
               <div key={item.label}>
                 <button
                   onClick={() => toggleSection(item.label)}
-                  className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all text-sm ${
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all text-[13px] ${
                     isSectionActive
-                      ? "bg-fizmo-purple-500/20 text-white"
+                      ? "bg-fizmo-purple-500 text-white"
                       : "text-gray-400 hover:bg-fizmo-dark-700 hover:text-white"
                   }`}
                 >
-                  <div className="flex items-center space-x-3">
-                    <Icon className="w-5 h-5 flex-shrink-0" />
-                    <span className="font-medium">{item.label}</span>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <Icon className="w-4 h-4 flex-shrink-0" />
+                    <span className="font-medium truncate">{item.label}</span>
                   </div>
                   {isExpanded ? (
-                    <FaChevronUp className="w-3 h-3 flex-shrink-0" />
+                    <FaChevronUp className="w-3 h-3 flex-shrink-0 ml-1" />
                   ) : (
-                    <FaChevronDown className="w-3 h-3 flex-shrink-0" />
+                    <FaChevronDown className="w-3 h-3 flex-shrink-0 ml-1" />
                   )}
                 </button>
 
                 {isExpanded && (
-                  <div className="ml-4 mt-1 space-y-1 border-l border-fizmo-purple-500/20 pl-3">
+                  <div className="ml-3 mt-0.5 mb-1 space-y-0.5 border-l border-fizmo-purple-500/30 pl-3">
                     {item.items.map((sub) => {
                       const isActive = pathname === sub.href;
                       return (
@@ -297,9 +297,9 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
                           key={sub.href}
                           href={sub.href}
                           onClick={onClose}
-                          className={`block px-3 py-2 rounded-lg transition-all text-xs ${
+                          className={`block px-2 py-1.5 rounded-md transition-all text-[12px] ${
                             isActive
-                              ? "bg-fizmo-purple-500/20 text-white border-l-2 border-fizmo-purple-500"
+                              ? "bg-fizmo-purple-500/30 text-white"
                               : "text-gray-400 hover:bg-fizmo-dark-700 hover:text-white"
                           }`}
                         >
@@ -314,15 +314,15 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
           })}
         </nav>
 
-        <div className="p-4 border-t border-fizmo-purple-500/20">
-          <div className="mb-3 px-4">
-            <p className="text-xs text-gray-400">Admin User</p>
-            <p className="text-white font-medium text-sm truncate">{user?.email}</p>
-            <p className="text-xs text-fizmo-purple-400 mt-1">{user?.role}</p>
+        <div className="px-3 py-4 border-t border-fizmo-purple-500/20">
+          <div className="mb-3 px-2">
+            <p className="text-[11px] text-gray-400">Admin User</p>
+            <p className="text-white font-medium text-[13px] truncate">{user?.email}</p>
+            <p className="text-[11px] text-fizmo-purple-400 mt-0.5">{user?.role}</p>
           </div>
           <button
             onClick={logout}
-            className="w-full px-4 py-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 transition-all text-sm"
+            className="w-full px-4 py-2 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500/20 transition-all text-[13px] font-medium"
           >
             Logout
           </button>
