@@ -33,7 +33,7 @@ export default function CreateAccountPage() {
         setMessage({ type: "success", text: `Account created! ID: ${data.account?.accountId || ""}` });
         setForm(f => ({ ...f, clientId: "" }));
       } else {
-        setMessage({ type: "error", text: data.error || "Failed to create account" });
+        setMessage({ type: "error", text: data.details ? `${data.error}: ${data.details}` : (data.error || "Failed to create account") });
       }
     } catch {
       setMessage({ type: "error", text: "Network error" });

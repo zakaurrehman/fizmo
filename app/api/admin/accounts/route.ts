@@ -138,7 +138,10 @@ export async function POST(request: NextRequest) {
     }
 
     const client = await prisma.client.findFirst({
-      where: { id: clientId, brokerId },
+      where: {
+        id: clientId,
+        OR: [{ brokerId }, { brokerId: null }],
+      },
     });
 
     if (!client) {
@@ -146,7 +149,8 @@ export async function POST(request: NextRequest) {
     }
 
     const prefix = accountType === "DEMO" ? "DEM" : "MT5";
-    const accountId = `${prefix}-${Date.now().toString().slice(-6)}${Math.floor(Math.random() * 1000)}`;
+    const timestamp = Date.now();
+    const accountId = `${prefix}-${timestamp.toString().slice(-8)}${Math.floor(Math.random() * 100)}`;
 
     const account = await prisma.account.create({
       data: {
@@ -175,7 +179,7 @@ export async function POST(request: NextRequest) {
     }, { status: 201 });
   } catch (error: any) {
     console.error("Admin account create error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: "Internal server error", details: error.message }, { status: 500 });
   }
 }
 
