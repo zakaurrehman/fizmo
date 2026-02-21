@@ -43,9 +43,9 @@ export default function SubAdminListPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-fizmo-purple-500/20">
-                  <th className="text-left text-gray-400 py-3 px-4 text-sm">NAME</th>
                   <th className="text-left text-gray-400 py-3 px-4 text-sm">EMAIL</th>
                   <th className="text-left text-gray-400 py-3 px-4 text-sm">ROLE</th>
+                  <th className="text-left text-gray-400 py-3 px-4 text-sm">STATUS</th>
                   <th className="text-left text-gray-400 py-3 px-4 text-sm">CREATED</th>
                 </tr>
               </thead>
@@ -55,13 +55,15 @@ export default function SubAdminListPage() {
                     key={user.id}
                     className="border-b border-fizmo-purple-500/10 hover:bg-fizmo-dark-800 transition-all"
                   >
-                    <td className="py-3 px-4 text-white text-sm font-medium">
-                      {user.firstName} {user.lastName}
-                    </td>
                     <td className="py-3 px-4 text-gray-400 text-sm">{user.email}</td>
                     <td className="py-3 px-4 text-sm">
                       <span className="px-2 py-1 rounded text-xs bg-fizmo-purple-500/20 text-fizmo-purple-400">
                         {user.role}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-sm">
+                      <span className={`px-2 py-1 rounded text-xs ${user.status === "ACTIVE" ? "bg-green-500/20 text-green-500" : "bg-red-500/20 text-red-500"}`}>
+                        {user.status || "ACTIVE"}
                       </span>
                     </td>
                     <td className="py-3 px-4 text-gray-400 text-sm">

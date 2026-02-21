@@ -10,7 +10,7 @@ export default function NotificationListPage() {
     async function fetchNotifications() {
       try {
         const token = localStorage.getItem("fizmo_token");
-        const response = await fetch("/api/notifications", {
+        const response = await fetch("/api/admin/notifications", {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (response.ok) {
@@ -62,12 +62,12 @@ export default function NotificationListPage() {
                     <td className="py-3 px-4 text-sm">
                       <span
                         className={`px-2 py-1 rounded text-xs ${
-                          notification.read
+                          notification.isRead
                             ? "bg-green-500/20 text-green-500"
                             : "bg-yellow-500/20 text-yellow-500"
                         }`}
                       >
-                        {notification.read ? "Read" : "Unread"}
+                        {notification.isRead ? "Read" : "Unread"}
                       </span>
                     </td>
                   </tr>

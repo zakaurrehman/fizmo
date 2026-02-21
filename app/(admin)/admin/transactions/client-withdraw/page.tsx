@@ -45,6 +45,7 @@ export default function ClientWithdrawPage() {
                   <th className="text-left text-gray-400 py-3 px-4 text-sm">DATE</th>
                   <th className="text-left text-gray-400 py-3 px-4 text-sm">CLIENT</th>
                   <th className="text-left text-gray-400 py-3 px-4 text-sm">AMOUNT</th>
+                  <th className="text-left text-gray-400 py-3 px-4 text-sm">CURRENCY</th>
                   <th className="text-left text-gray-400 py-3 px-4 text-sm">STATUS</th>
                 </tr>
               </thead>
@@ -63,8 +64,9 @@ export default function ClientWithdrawPage() {
                       </p>
                     </td>
                     <td className="py-3 px-4 text-white font-semibold text-sm">
-                      {withdrawal.currency} {(withdrawal.amount || 0).toLocaleString()}
+                      {(withdrawal.amount || 0).toLocaleString()}
                     </td>
+                    <td className="py-3 px-4 text-gray-400 text-sm">{withdrawal.currency}</td>
                     <td className="py-3 px-4 text-sm">
                       <span
                         className={`px-2 py-1 rounded text-xs ${

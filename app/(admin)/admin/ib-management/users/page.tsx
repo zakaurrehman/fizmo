@@ -45,7 +45,7 @@ export default function IBUsersPage() {
                   <th className="text-left text-gray-400 py-3 px-4 text-sm">NAME</th>
                   <th className="text-left text-gray-400 py-3 px-4 text-sm">EMAIL</th>
                   <th className="text-left text-gray-400 py-3 px-4 text-sm">COMMISSION RATE</th>
-                  <th className="text-left text-gray-400 py-3 px-4 text-sm">TOTAL EARNED</th>
+                  <th className="text-left text-gray-400 py-3 px-4 text-sm">TOTAL COMMISSION</th>
                   <th className="text-left text-gray-400 py-3 px-4 text-sm">STATUS</th>
                 </tr>
               </thead>
@@ -56,12 +56,12 @@ export default function IBUsersPage() {
                     className="border-b border-fizmo-purple-500/10 hover:bg-fizmo-dark-800 transition-all"
                   >
                     <td className="py-3 px-4 text-white text-sm font-medium">
-                      {ib.firstName} {ib.lastName}
+                      {ib.name}
                     </td>
                     <td className="py-3 px-4 text-gray-400 text-sm">{ib.email}</td>
                     <td className="py-3 px-4 text-white text-sm">{ib.commissionRate}%</td>
                     <td className="py-3 px-4 text-green-500 text-sm font-semibold">
-                      ${(ib.totalEarned || 0).toLocaleString()}
+                      ${(ib.totalCommission || 0).toLocaleString()}
                     </td>
                     <td className="py-3 px-4 text-sm">
                       <span

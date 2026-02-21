@@ -44,8 +44,8 @@ export default function LoginActivityPage() {
                 <tr className="border-b border-fizmo-purple-500/20">
                   <th className="text-left text-gray-400 py-3 px-4 text-sm">DATE</th>
                   <th className="text-left text-gray-400 py-3 px-4 text-sm">ACTION</th>
-                  <th className="text-left text-gray-400 py-3 px-4 text-sm">ACTOR</th>
-                  <th className="text-left text-gray-400 py-3 px-4 text-sm">TARGET</th>
+                  <th className="text-left text-gray-400 py-3 px-4 text-sm">USER</th>
+                  <th className="text-left text-gray-400 py-3 px-4 text-sm">ENTITY</th>
                 </tr>
               </thead>
               <tbody>
@@ -55,15 +55,15 @@ export default function LoginActivityPage() {
                     className="border-b border-fizmo-purple-500/10 hover:bg-fizmo-dark-800 transition-all"
                   >
                     <td className="py-3 px-4 text-white text-sm">
-                      {new Date(log.createdAt).toLocaleString()}
+                      {new Date(log.timestamp).toLocaleString()}
                     </td>
                     <td className="py-3 px-4 text-sm">
                       <span className="px-2 py-1 rounded text-xs bg-blue-500/20 text-blue-500">
                         {log.action}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-white text-sm">{log.actor}</td>
-                    <td className="py-3 px-4 text-gray-400 text-sm">{log.target}</td>
+                    <td className="py-3 px-4 text-white text-sm">{log.user}</td>
+                    <td className="py-3 px-4 text-gray-400 text-sm">{log.entity}</td>
                   </tr>
                 ))}
               </tbody>

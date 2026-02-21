@@ -43,22 +43,23 @@ export default function WalletHistoryReportPage() {
               <thead>
                 <tr className="border-b border-fizmo-purple-500/20">
                   <th className="text-left text-gray-400 py-3 px-4 text-sm">DATE</th>
+                  <th className="text-left text-gray-400 py-3 px-4 text-sm">CLIENT</th>
                   <th className="text-left text-gray-400 py-3 px-4 text-sm">TYPE</th>
                   <th className="text-left text-gray-400 py-3 px-4 text-sm">AMOUNT</th>
                   <th className="text-left text-gray-400 py-3 px-4 text-sm">CURRENCY</th>
-                  <th className="text-left text-gray-400 py-3 px-4 text-sm">DESCRIPTION</th>
                   <th className="text-left text-gray-400 py-3 px-4 text-sm">STATUS</th>
                 </tr>
               </thead>
               <tbody>
                 {transactions.map((tx: any) => (
                   <tr
-                    key={tx.id}
+                    key={tx.txId}
                     className="border-b border-fizmo-purple-500/10 hover:bg-fizmo-dark-800 transition-all"
                   >
                     <td className="py-3 px-4 text-white text-sm">
-                      {new Date(tx.createdAt).toLocaleString()}
+                      {new Date(tx.timestamp).toLocaleString()}
                     </td>
+                    <td className="py-3 px-4 text-gray-400 text-sm">{tx.clientName}</td>
                     <td className="py-3 px-4 text-sm">
                       <span className="px-2 py-1 rounded text-xs bg-purple-500/20 text-purple-400">
                         {tx.type}
@@ -68,7 +69,6 @@ export default function WalletHistoryReportPage() {
                       {(tx.amount || 0).toLocaleString()}
                     </td>
                     <td className="py-3 px-4 text-gray-400 text-sm">{tx.currency}</td>
-                    <td className="py-3 px-4 text-gray-400 text-sm">{tx.description}</td>
                     <td className="py-3 px-4 text-sm">
                       <span
                         className={`px-2 py-1 rounded text-xs ${

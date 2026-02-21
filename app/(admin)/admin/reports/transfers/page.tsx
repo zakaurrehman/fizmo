@@ -43,10 +43,10 @@ export default function InternalTransferReportPage() {
               <thead>
                 <tr className="border-b border-fizmo-purple-500/20">
                   <th className="text-left text-gray-400 py-3 px-4 text-sm">DATE</th>
+                  <th className="text-left text-gray-400 py-3 px-4 text-sm">CLIENT</th>
                   <th className="text-left text-gray-400 py-3 px-4 text-sm">TYPE</th>
                   <th className="text-left text-gray-400 py-3 px-4 text-sm">AMOUNT</th>
                   <th className="text-left text-gray-400 py-3 px-4 text-sm">CURRENCY</th>
-                  <th className="text-left text-gray-400 py-3 px-4 text-sm">DESCRIPTION</th>
                   <th className="text-left text-gray-400 py-3 px-4 text-sm">STATUS</th>
                 </tr>
               </thead>
@@ -57,8 +57,9 @@ export default function InternalTransferReportPage() {
                     className="border-b border-fizmo-purple-500/10 hover:bg-fizmo-dark-800 transition-all"
                   >
                     <td className="py-3 px-4 text-white text-sm">
-                      {new Date(tx.createdAt).toLocaleString()}
+                      {new Date(tx.timestamp).toLocaleString()}
                     </td>
+                    <td className="py-3 px-4 text-gray-400 text-sm">{tx.clientName}</td>
                     <td className="py-3 px-4 text-sm">
                       <span className="px-2 py-1 rounded text-xs bg-blue-500/20 text-blue-500">
                         {tx.type}
@@ -68,7 +69,6 @@ export default function InternalTransferReportPage() {
                       {(tx.amount || 0).toLocaleString()}
                     </td>
                     <td className="py-3 px-4 text-gray-400 text-sm">{tx.currency}</td>
-                    <td className="py-3 px-4 text-gray-400 text-sm">{tx.description}</td>
                     <td className="py-3 px-4 text-sm">
                       <span
                         className={`px-2 py-1 rounded text-xs ${
