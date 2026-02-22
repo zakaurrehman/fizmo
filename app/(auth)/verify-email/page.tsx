@@ -1,16 +1,46 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const emailFromUrl = searchParams.get("email") || "";
+  const tokenFromUrl = searchParams.get("token") || "";
   const [email, setEmail] = useState(emailFromUrl);
   const [resendLoading, setResendLoading] = useState(false);
   const [resendMessage, setResendMessage] = useState("");
+  const [verifying, setVerifying] = useState(!!tokenFromUrl);
+  const [verified, setVerified] = useState(false);
+  const [verifyError, setVerifyError] = useState("");
+
+  // Auto-verify when token is present in URL
+  useEffect(() => {
+    if (!tokenFromUrl) return;
+    (async () => {
+      try {
+        const res = await fetch("/api/auth/verify-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: tokenFromUrl }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setVerified(true);
+          setTimeout(() => router.push("/login"), 3000);
+        } else {
+          setVerifyError(data.error || "Verification failed");
+        }
+      } catch {
+        setVerifyError("Network error. Please try again.");
+      } finally {
+        setVerifying(false);
+      }
+    })();
+  }, [tokenFromUrl, router]);
 
   const handleResendEmail = async () => {
     if (!email || !email.includes("@")) {
@@ -62,8 +92,36 @@ function VerifyEmailContent() {
                 Fizmo
               </h1>
             </Link>
+
+          {/* Token verification states */}
+          {verifying && (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-fizmo-purple-500 mx-auto mb-4"></div>
+              <p className="text-gray-400">Verifying your email...</p>
+            </div>
+          )}
+
+          {verified && (
+            <div className="text-center py-8">
+              <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-500/20 border-2 border-green-500/50 mb-4">
+                <svg className="w-10 h-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-2">Email Verified!</h3>
+              <p className="text-gray-400">Redirecting to login...</p>
+            </div>
+          )}
+
+          {verifyError && (
+            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-center">
+              <p className="text-red-400">{verifyError}</p>
+            </div>
+          )}
           </div>
 
+          {!verifying && !verified && (
+          <>
           {/* Success Icon */}
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-500/20 border-2 border-green-500/50 mb-4">
@@ -153,6 +211,8 @@ function VerifyEmailContent() {
             )}
           </div>
 
+          </>
+          )}
           {/* Back to Login */}
           <div className="text-center pt-6 border-t border-gray-800">
             <p className="text-gray-400 text-sm">

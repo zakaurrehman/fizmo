@@ -86,9 +86,9 @@ export default function AdminWithdrawalsPage() {
     const headers = ["Date", "Client", "Email", "Account", "Amount", "Method", "Details", "Status"];
     const rows = filteredWithdrawals.map((w) => [
       new Date(w.createdAt).toLocaleString(),
-      `${w.account?.client?.firstName || ""} ${w.account?.client?.lastName || ""}`.trim(),
-      w.account?.client?.user?.email || "",
-      w.account?.accountId || "",
+      `${w.client?.firstName || ""} ${w.client?.lastName || ""}`.trim(),
+      w.client?.user?.email || "",
+      w.accountId || "",
       w.amount?.toFixed(2) || "0.00",
       w.paymentMethod || "",
       w.paymentDetails?.substring(0, 30) || "",
@@ -269,15 +269,14 @@ export default function AdminWithdrawalsPage() {
                     </td>
                     <td className="py-3 px-4 text-sm">
                       <p className="text-white font-medium">
-                        {withdrawal.account?.client?.firstName} {withdrawal.account?.client?.lastName}
+                        {withdrawal.client?.firstName} {withdrawal.client?.lastName}
                       </p>
                       <p className="text-gray-400 text-xs">
-                        {withdrawal.account?.client?.user?.email}
+                        {withdrawal.client?.user?.email}
                       </p>
                     </td>
                     <td className="py-3 px-4 text-sm">
-                      <p className="text-white font-mono">{withdrawal.account?.accountId}</p>
-                      <p className="text-gray-400 text-xs">{withdrawal.account?.accountType}</p>
+                      <p className="text-white font-mono">{withdrawal.clientId?.slice(0, 12) || "-"}</p>
                     </td>
                     <td className="py-3 px-4 text-white font-semibold text-sm">
                       ${withdrawal.amount.toLocaleString()}

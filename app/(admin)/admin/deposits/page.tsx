@@ -86,9 +86,9 @@ export default function AdminDepositsPage() {
     const headers = ["Date", "Client", "Email", "Account", "Amount", "Method", "Status"];
     const rows = filteredDeposits.map((d) => [
       new Date(d.createdAt).toLocaleString(),
-      `${d.account?.client?.firstName || ""} ${d.account?.client?.lastName || ""}`.trim(),
-      d.account?.client?.user?.email || "",
-      d.account?.accountId || "",
+      `${d.client?.firstName || ""} ${d.client?.lastName || ""}`.trim(),
+      d.client?.user?.email || "",
+      d.accountId || "",
       d.amount?.toFixed(2) || "0.00",
       d.paymentMethod || "",
       d.status || "",
@@ -262,15 +262,14 @@ export default function AdminDepositsPage() {
                     </td>
                     <td className="py-3 px-4 text-sm">
                       <p className="text-white font-medium">
-                        {deposit.account?.client?.firstName} {deposit.account?.client?.lastName}
+                        {deposit.client?.firstName} {deposit.client?.lastName}
                       </p>
                       <p className="text-gray-400 text-xs">
-                        {deposit.account?.client?.user?.email}
+                        {deposit.client?.user?.email}
                       </p>
                     </td>
                     <td className="py-3 px-4 text-sm">
-                      <p className="text-white font-mono">{deposit.account?.accountId}</p>
-                      <p className="text-gray-400 text-xs">{deposit.account?.accountType}</p>
+                      <p className="text-white font-mono">{deposit.clientId?.slice(0, 12) || "-"}</p>
                     </td>
                     <td className="py-3 px-4 text-white font-semibold text-sm">
                       ${deposit.amount.toLocaleString()}

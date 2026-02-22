@@ -6,7 +6,7 @@ interface Client { id: string; clientId: string; firstName: string; lastName: st
 
 export default function CreateAccountPage() {
   const [clients, setClients] = useState<Client[]>([]);
-  const [form, setForm] = useState({ clientId: "", accountType: "LIVE", currency: "USD", leverage: "100" });
+  const [form, setForm] = useState({ clientId: "", accountType: "LIVE", currency: "USD", leverage: "100", mt5Login: "" });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -26,7 +26,7 @@ export default function CreateAccountPage() {
       const res = await fetch("/api/admin/accounts", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ clientId: form.clientId, accountType: form.accountType, currency: form.currency, leverage: parseInt(form.leverage) }),
+        body: JSON.stringify({ clientId: form.clientId, accountType: form.accountType, currency: form.currency, leverage: parseInt(form.leverage), ...(form.mt5Login ? { mt5Login: parseInt(form.mt5Login) } : {}) }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -83,6 +83,11 @@ export default function CreateAccountPage() {
                 <option value="GBP">GBP</option>
               </select>
             </div>
+          </div>
+          <div>
+            <label className="block text-sm text-gray-400 mb-1">MT5 Login (optional)</label>
+            <input type="number" placeholder="e.g. 10048" value={form.mt5Login} onChange={e => setForm(f => ({ ...f, mt5Login: e.target.value }))}
+              className="w-full bg-fizmo-dark-800 border border-fizmo-dark-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-fizmo-purple-500" />
           </div>
           <div>
             <label className="block text-sm text-gray-400 mb-1">Leverage</label>

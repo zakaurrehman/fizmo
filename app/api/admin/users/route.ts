@@ -125,7 +125,10 @@ export async function GET(request: NextRequest) {
       },
       include: {
         user: {
-          select: { id: true, email: true, status: true, kycStatus: true, emailVerified: true, createdAt: true },
+          select: { id: true, email: true, status: true, kycStatus: true, emailVerified: true, twoFactorEnabled: true, createdAt: true },
+        },
+        accounts: {
+          select: { balance: true },
         },
         _count: { select: { accounts: true, deposits: true } },
       },
@@ -133,7 +136,38 @@ export async function GET(request: NextRequest) {
       take: 100,
     });
 
-    return NextResponse.json({ users: clients });
+    // Get IB relations for all clients in one query
+    const clientIds = clients.map((c) => c.id);
+    const ibRelations = await prisma.ibRelation.findMany({
+      where: { clientId: { in: clientIds }, brokerId },
+      select: { clientId: true, ibId: true },
+    });
+
+    // Get IB names
+    const ibIds = [...new Set(ibRelations.map((r) => r.ibId))];
+    const ibs = ibIds.length > 0 ? await prisma.introducingBroker.findMany({
+      where: { ibId: { in: ibIds } },
+      select: { ibId: true, name: true },
+    }) : [];
+    const ibNameMap = Object.fromEntries(ibs.map((ib) => [ib.ibId, ib.name]));
+    const clientIbMap = Object.fromEntries(ibRelations.map((r) => [r.clientId, ibNameMap[r.ibId] || ""]));
+
+    // Map response with wallet balance and IB name
+    const users = clients.map((c) => ({
+      id: c.id,
+      clientId: c.clientId,
+      firstName: c.firstName,
+      lastName: c.lastName,
+      phone: c.phone,
+      country: c.country,
+      user: c.user,
+      walletBalance: c.accounts.reduce((sum, acc) => sum + Number(acc.balance), 0),
+      ibName: clientIbMap[c.id] || "",
+      _count: c._count,
+      createdAt: c.createdAt,
+    }));
+
+    return NextResponse.json({ users });
   } catch (error: any) {
     console.error("List users error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

@@ -49,13 +49,13 @@ export default function InternalTransferPage() {
       const accData = await accRes.json();
       const trfData = await trfRes.json();
 
-      if (accData.success) {
-        const activeAccounts = accData.data.filter((a: Account) => a.status === "ACTIVE");
+      if (accData.accounts) {
+        const activeAccounts = accData.accounts.filter((a: Account) => a.status === "ACTIVE");
         setAccounts(activeAccounts);
         if (activeAccounts.length > 0) setFromAccount(activeAccounts[0].id);
       }
-      if (trfData.success) {
-        setTransfers(trfData.transfers || []);
+      if (trfData.transfers) {
+        setTransfers(trfData.transfers);
       }
     } catch (err) {
       console.error("Failed to fetch data:", err);

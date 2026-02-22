@@ -33,15 +33,11 @@ export async function GET(request: NextRequest) {
       take: limit / 2,
       orderBy: { createdAt: "desc" },
       include: {
-        account: {
+        client: {
           include: {
-            client: {
-              include: {
-                user: {
-                  select: {
-                    email: true,
-                  },
-                },
+            user: {
+              select: {
+                email: true,
               },
             },
           },
@@ -55,15 +51,11 @@ export async function GET(request: NextRequest) {
       take: limit / 2,
       orderBy: { createdAt: "desc" },
       include: {
-        account: {
+        client: {
           include: {
-            client: {
-              include: {
-                user: {
-                  select: {
-                    email: true,
-                  },
-                },
+            user: {
+              select: {
+                email: true,
               },
             },
           },
@@ -75,7 +67,7 @@ export async function GET(request: NextRequest) {
 
     // Create audit logs from deposits
     deposits.forEach((deposit) => {
-      const client = deposit.account.client;
+      const client = deposit.client;
       auditLogs.push({
         id: `DEP-${deposit.id}`,
         timestamp: deposit.createdAt,
@@ -110,7 +102,7 @@ export async function GET(request: NextRequest) {
 
     // Create audit logs from withdrawals
     withdrawals.forEach((withdrawal) => {
-      const client = withdrawal.account.client;
+      const client = withdrawal.client;
       auditLogs.push({
         id: `WD-${withdrawal.id}`,
         timestamp: withdrawal.createdAt,

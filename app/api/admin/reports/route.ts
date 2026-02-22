@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { verifyAuth } from "@/lib/auth";
+import { verifyAuth, getBrokerIdFromToken } from "@/lib/auth";
 
 // GET - Fetch reports and analytics data (Admin only)
 export async function GET(request: NextRequest) {
@@ -12,6 +12,11 @@ export async function GET(request: NextRequest) {
 
     if (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const brokerId = await getBrokerIdFromToken(request);
+    if (!brokerId) {
+      return NextResponse.json({ error: "Broker context not found" }, { status: 400 });
     }
 
     // Get date range from query params (default to 30 days)
@@ -50,12 +55,14 @@ export async function GET(request: NextRequest) {
     const [currentDeposits, previousDeposits] = await Promise.all([
       prisma.deposit.findMany({
         where: {
+          brokerId,
           createdAt: { gte: startDate },
           status: "COMPLETED",
         },
       }),
       prisma.deposit.findMany({
         where: {
+          brokerId,
           createdAt: { gte: previousStartDate, lt: previousEndDate },
           status: "COMPLETED",
         },
@@ -66,12 +73,14 @@ export async function GET(request: NextRequest) {
     const [currentWithdrawals, previousWithdrawals] = await Promise.all([
       prisma.withdrawal.findMany({
         where: {
+          brokerId,
           createdAt: { gte: startDate },
           status: "COMPLETED",
         },
       }),
       prisma.withdrawal.findMany({
         where: {
+          brokerId,
           createdAt: { gte: previousStartDate, lt: previousEndDate },
           status: "COMPLETED",
         },
@@ -79,12 +88,12 @@ export async function GET(request: NextRequest) {
     ]);
 
     // Calculate totals
-    const totalDeposits = currentDeposits.reduce((sum, d) => sum + d.amount, 0);
-    const totalWithdrawals = currentWithdrawals.reduce((sum, w) => sum + w.amount, 0);
+    const totalDeposits = currentDeposits.reduce((sum, d) => sum + Number(d.amount), 0);
+    const totalWithdrawals = currentWithdrawals.reduce((sum, w) => sum + Number(w.amount), 0);
     const netDeposits = totalDeposits - totalWithdrawals;
 
-    const prevTotalDeposits = previousDeposits.reduce((sum, d) => sum + d.amount, 0);
-    const prevTotalWithdrawals = previousWithdrawals.reduce((sum, w) => sum + w.amount, 0);
+    const prevTotalDeposits = previousDeposits.reduce((sum, d) => sum + Number(d.amount), 0);
+    const prevTotalWithdrawals = previousWithdrawals.reduce((sum, w) => sum + Number(w.amount), 0);
     const prevNetDeposits = prevTotalDeposits - prevTotalWithdrawals;
 
     // Calculate growth percentages
@@ -101,20 +110,22 @@ export async function GET(request: NextRequest) {
 
     // Get all accounts for total balance
     const accounts = await prisma.account.findMany({
+      where: { brokerId },
       select: {
         balance: true,
         equity: true,
       },
     });
 
-    const totalBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
-    const totalEquity = accounts.reduce((sum, acc) => sum + acc.equity, 0);
+    const totalBalance = accounts.reduce((sum, acc) => sum + Number(acc.balance), 0);
+    const totalEquity = accounts.reduce((sum, acc) => sum + Number(acc.equity), 0);
 
     // Get client counts
     const [totalClients, activeClients] = await Promise.all([
-      prisma.client.count(),
+      prisma.client.count({ where: { brokerId } }),
       prisma.client.count({
         where: {
+          brokerId,
           accounts: {
             some: {
               status: "ACTIVE",
@@ -127,12 +138,14 @@ export async function GET(request: NextRequest) {
     // Get new clients in current period
     const newClients = await prisma.client.count({
       where: {
+        brokerId,
         createdAt: { gte: startDate },
       },
     });
 
     const prevNewClients = await prisma.client.count({
       where: {
+        brokerId,
         createdAt: { gte: previousStartDate, lt: previousEndDate },
       },
     });
@@ -157,34 +170,26 @@ export async function GET(request: NextRequest) {
       })
     );
 
-    // KYC statistics
+    // KYC statistics (kycStatus is on User model, not Client)
     const [kycApproved, kycUnderReview, kycRejected, kycPending] = await Promise.all([
-      prisma.client.count({ where: { kycStatus: "APPROVED" } }),
-      prisma.client.count({ where: { kycStatus: "UNDER_REVIEW" } }),
-      prisma.client.count({ where: { kycStatus: "REJECTED" } }),
-      prisma.client.count({ where: { kycStatus: "PENDING" } }),
+      prisma.client.count({ where: { brokerId, user: { kycStatus: "APPROVED" } } }),
+      prisma.client.count({ where: { brokerId, user: { kycStatus: "UNDER_REVIEW" } } }),
+      prisma.client.count({ where: { brokerId, user: { kycStatus: "REJECTED" } } }),
+      prisma.client.count({ where: { brokerId, user: { kycStatus: "PENDING" } } }),
     ]);
 
     // Calculate client lifetime value (total deposits per client)
     const clientsWithDeposits = await prisma.client.findMany({
+      where: { brokerId },
       include: {
-        accounts: {
-          include: {
-            deposits: {
-              where: { status: "COMPLETED" },
-            },
-          },
+        deposits: {
+          where: { status: "COMPLETED" },
         },
       },
     });
 
     const lifetimeValues = clientsWithDeposits.map((client) => {
-      const totalClientDeposits = client.accounts.reduce(
-        (sum, account) =>
-          sum + account.deposits.reduce((accSum, deposit) => accSum + deposit.amount, 0),
-        0
-      );
-      return totalClientDeposits;
+      return client.deposits.reduce((sum, deposit) => sum + Number(deposit.amount), 0);
     });
 
     const avgLifetimeValue =

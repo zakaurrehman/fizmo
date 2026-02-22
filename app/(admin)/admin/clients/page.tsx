@@ -222,8 +222,18 @@ export default function AdminClientsPage() {
                         {client.kycStatus?.replace("_", " ") || "PENDING"}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-gray-400 text-sm">
-                      {client.accountsCount} accounts
+                    <td className="py-3 px-4 text-sm">
+                      {client.labels?.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {client.labels.map((label: string) => (
+                            <span key={label} className="px-2 py-0.5 bg-fizmo-purple-500/20 text-fizmo-purple-400 rounded text-xs">
+                              {label}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-gray-500 text-xs">-</span>
+                      )}
                     </td>
                     <td className="py-3 px-4 text-sm">
                       <div className="flex space-x-2">

@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { clientId } = body;
+    const { clientId, accountId } = body;
 
     if (!clientId) {
       return NextResponse.json({ error: "Client ID is required" }, { status: 400 });
@@ -32,7 +32,6 @@ export async function POST(request: NextRequest) {
         accounts: {
           where: { status: "ACTIVE" },
           orderBy: { createdAt: "desc" },
-          take: 1,
         },
       },
     });
@@ -45,7 +44,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Client has no active trading accounts" }, { status: 400 });
     }
 
-    const account = client.accounts[0];
+    // Use specific account if provided, otherwise first active account
+    const account = accountId
+      ? client.accounts.find((a) => a.accountId === accountId) || client.accounts[0]
+      : client.accounts[0];
 
     await sendMT5DataEmail(
       client.user.email,

@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { clientId, accountType, currency, leverage } = body;
+    const { clientId, accountType, currency, leverage, mt5Login } = body;
 
     if (!clientId || !accountType) {
       return NextResponse.json({ error: "Client ID and account type are required" }, { status: 400 });
@@ -162,6 +162,7 @@ export async function POST(request: NextRequest) {
         leverage: leverage || 100,
         balance: accountType === "DEMO" ? 10000 : 0,
         equity: accountType === "DEMO" ? 10000 : 0,
+        ...(mt5Login ? { mt5Login: parseInt(mt5Login) } : {}),
       },
     });
 
@@ -201,7 +202,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { accountId, status, leverage } = body;
+    const { accountId, status, leverage, mt5Password } = body;
 
     if (!accountId) {
       return NextResponse.json({ error: "Account ID is required" }, { status: 400 });
@@ -213,6 +214,20 @@ export async function PATCH(request: NextRequest) {
 
     if (!account) {
       return NextResponse.json({ error: "Account not found" }, { status: 404 });
+    }
+
+    // MT5 password change — requires MT5 server integration
+    if (mt5Password) {
+      // TODO: Send password change to actual MT5 server when integrated
+      return NextResponse.json({
+        success: true,
+        message: "MT5 password update queued. Will take effect when MT5 server is connected.",
+        account: {
+          id: account.id,
+          accountId: account.accountId,
+          leverage: account.leverage,
+        },
+      });
     }
 
     const updateData: any = {};

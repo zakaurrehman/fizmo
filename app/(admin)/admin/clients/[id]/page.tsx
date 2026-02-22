@@ -21,7 +21,10 @@ export default function ClientDetailPage() {
 
   async function fetchClientDetails() {
     try {
-      const response = await fetch(`/api/admin/clients/${clientId}`);
+      const token = localStorage.getItem("fizmo_token");
+      const response = await fetch(`/api/admin/clients/${clientId}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       if (response.ok) {
         const data = await response.json();
         setClient(data.client);

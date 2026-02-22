@@ -46,16 +46,16 @@ export async function GET(request: NextRequest) {
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-        const clientAccountIds = await prisma.account.findMany({
+        const clientAccounts = await prisma.account.findMany({
           where: {
             clientId: { in: relations.map((r) => r.clientId) },
           },
-          select: { accountId: true },
+          select: { id: true },
         });
 
         const trades = await prisma.trade.findMany({
           where: {
-            accountId: { in: clientAccountIds.map((a) => a.accountId) },
+            accountId: { in: clientAccounts.map((a) => a.id) },
             openTime: { gte: thirtyDaysAgo },
           },
         });
@@ -120,7 +120,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const user = await verifyAuth(request);
-    if (!user || user.role !== "ADMIN") {
+    if (!user || (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -213,7 +213,7 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const user = await verifyAuth(request);
-    if (!user || user.role !== "ADMIN") {
+    if (!user || (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -283,7 +283,7 @@ export async function PUT(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const user = await verifyAuth(request);
-    if (!user || user.role !== "ADMIN") {
+    if (!user || (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

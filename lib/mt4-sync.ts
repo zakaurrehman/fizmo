@@ -104,8 +104,8 @@ export class MT4SyncService {
             data: {
               symbol: mt4Trade.symbol,
               direction: this.getDirection(mt4Trade.cmd),
-              entryPrice: mt4Trade.open_price,
-              exitPrice: mt4Trade.close_price || null,
+              openPrice: mt4Trade.open_price,
+              closePrice: mt4Trade.close_price || null,
               volume: mt4Trade.volume,
               openTime: new Date(mt4Trade.open_time * 1000),
               closeTime: mt4Trade.close_time
@@ -115,7 +115,6 @@ export class MT4SyncService {
               profit: mt4Trade.profit,
               commission: mt4Trade.commission,
               comment: mt4Trade.comment,
-              updatedAt: new Date(),
             },
           });
           tradesUpdated++;
@@ -124,10 +123,11 @@ export class MT4SyncService {
           await prisma.trade.create({
             data: {
               accountId: account.id,
+              tradeId: externalId,
               symbol: mt4Trade.symbol,
               direction: this.getDirection(mt4Trade.cmd),
-              entryPrice: mt4Trade.open_price,
-              exitPrice: mt4Trade.close_price || null,
+              openPrice: mt4Trade.open_price,
+              closePrice: mt4Trade.close_price || null,
               volume: mt4Trade.volume,
               openTime: new Date(mt4Trade.open_time * 1000),
               closeTime: mt4Trade.close_time
@@ -216,13 +216,7 @@ export class MT4SyncService {
         where: { accountId },
       });
 
-      const totalProfit = trades.reduce((sum, t) => sum + (t.profit || 0), 0);
-      const totalCommission = trades.reduce(
-        (sum, t) => sum + (t.commission || 0),
-        0
-      );
-      const winningTrades = trades.filter((t) => (t.profit || 0) > 0).length;
-      const losingTrades = trades.filter((t) => (t.profit || 0) < 0).length;
+      const winningTrades = trades.filter((t) => Number(t.profit || 0) > 0).length;
 
       await prisma.account.update({
         where: { id: accountId },
@@ -232,6 +226,7 @@ export class MT4SyncService {
             trades.length > 0
               ? (winningTrades / trades.length) * 100
               : 0,
+          lastSyncAt: new Date(),
         },
       });
     } catch (error) {

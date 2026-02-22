@@ -78,6 +78,7 @@ export async function GET(request: NextRequest) {
       country: client.country,
       status: client.user.status,
       kycStatus: client.user.kycStatus,
+      labels: client.labels || [],
       createdAt: client.createdAt,
       accountsCount: client._count.accounts,
       totalBalance: client.accounts.reduce((sum, acc) => sum + Number(acc.balance), 0),

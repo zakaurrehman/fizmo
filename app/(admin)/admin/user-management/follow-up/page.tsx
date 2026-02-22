@@ -10,7 +10,7 @@ interface FollowUpClient {
   email: string;
   phone: string | null;
   country: string | null;
-  createdAt: string;
+  registeredAt: string;
   reason: string;
 }
 
@@ -57,7 +57,7 @@ export default function FollowUpPage() {
                     <td className="py-3 px-4 text-gray-400">{c.email}</td>
                     <td className="py-3 px-4 text-gray-400">{c.phone || "-"}</td>
                     <td className="py-3 px-4 text-gray-400">{c.country || "-"}</td>
-                    <td className="py-3 px-4 text-gray-400">{new Date(c.createdAt).toLocaleDateString()}</td>
+                    <td className="py-3 px-4 text-gray-400">{new Date(c.registeredAt).toLocaleDateString()}</td>
                     <td className="py-3 px-4">
                       <span className={`text-xs px-2 py-1 rounded ${reasonColor(c.reason)}`}>{c.reason}</span>
                     </td>

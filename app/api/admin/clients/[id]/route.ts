@@ -167,7 +167,7 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const { firstName, lastName, phone, country, labels, kycStatus } = body;
+    const { firstName, lastName, phone, country, labels, kycStatus, status } = body;
 
     // Update client fields
     const clientUpdate: any = {};
@@ -184,11 +184,15 @@ export async function PATCH(
       });
     }
 
-    // Update KYC status on User model if provided
-    if (kycStatus) {
+    // Update User model fields if provided (kycStatus, status)
+    const userUpdate: any = {};
+    if (kycStatus) userUpdate.kycStatus = kycStatus;
+    if (status) userUpdate.status = status;
+
+    if (Object.keys(userUpdate).length > 0) {
       await prisma.user.update({
         where: { id: client.userId },
-        data: { kycStatus },
+        data: userUpdate,
       });
     }
 
