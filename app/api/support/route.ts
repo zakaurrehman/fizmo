@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
       include: {
         messages: {
           orderBy: { createdAt: "asc" },
-          take: 1, // Only get first message for preview
+          // Return all messages for ticket detail view
         },
       },
       orderBy: { createdAt: "desc" },
